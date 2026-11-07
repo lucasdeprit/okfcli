@@ -3,6 +3,9 @@ import { dirname } from 'node:path';
 import { stringify } from 'yaml';
 import { UserError } from './errors.js';
 
+// Files the CLI owns inside every wiki folder; they are never pages.
+export const RESERVED = new Set(['index.md', 'log.md']);
+
 export const KEBAB = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
 // Wiki paths always use "/", on Windows too.

@@ -1,11 +1,11 @@
 import { existsSync } from 'node:fs';
 import { join, posix } from 'node:path';
-import { CORE_FOLDERS, typeAlias } from './profile.js';
+import { CORE_FOLDERS } from './profile.js';
 import { loadWiki, scanBody } from './pages.js';
 import { regenerateIndexes } from './indexer.js';
 import { KEBAB } from './util.js';
 import { requiredPages } from './templates.js';
-import { trustState } from './trust.js';
+import { countTodos, trustState } from './trust.js';
 
 export const DEFAULT_SEVERITY = {
   'okf.frontmatter': 'error',
@@ -126,7 +126,7 @@ export function validateWiki(root, profile) {
         }
       }
     }
-    const todos = (body.match(/<!--\s*TODO/g) ?? []).length;
+    const todos = countTodos(body);
     if (todos) add('page.todo', rel, `${todos} unfilled TODO placeholder${todos > 1 ? 's' : ''}.`, 'Write the section content and remove the "<!-- TODO -->" comment.');
 
     for (const target of links) {
@@ -159,4 +159,3 @@ export function validateWiki(root, profile) {
   return issues;
 }
 
-export { typeAlias };
