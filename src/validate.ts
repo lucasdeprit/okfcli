@@ -1,13 +1,14 @@
 import { existsSync } from 'node:fs';
 import { join, posix } from 'node:path';
-import { CORE_FOLDERS } from './profile.js';
-import { loadWiki, scanBody } from './pages.js';
+import { CORE_FOLDERS, folderByName } from './profile.js';
+import { loadWiki, missingSections, scanBody } from './pages.js';
 import { regenerateIndexes } from './indexer.js';
 import { KEBAB } from './util.js';
 import { requiredPages } from './templates.js';
 import { countTodos, trustState } from './trust.js';
+import type { Issue, Profile } from './types.js';
 
-export const DEFAULT_SEVERITY = {
+export const DEFAULT_SEVERITY: Record<string, 'error' | 'warning'> = {
   'okf.frontmatter': 'error',
   'okf.type': 'error',
   'okf.index': 'error',
@@ -30,19 +31,18 @@ export const DEFAULT_SEVERITY = {
 };
 
 const STATUSES = ['draft', 'stable', 'deprecated'];
-const isBlank = (v) => v === undefined || v === null || String(v).trim() === '';
+const isBlank = (v: unknown): boolean => v === undefined || v === null || String(v).trim() === '';
 
 // Returns the list of issues: { rule, severity, file, message, fix }.
-export function validateWiki(root, profile) {
-  const issues = [];
-  const add = (rule, file, message, fix) => {
+export function validateWiki(root: string, profile: Profile): Issue[] {
+  const issues: Issue[] = [];
+  const add = (rule: string, file: string, message: string, fix: string): void => {
     const severity = profile.severity[rule] ?? DEFAULT_SEVERITY[rule];
-    if (severity === 'off') return;
+    if (severity === 'off' || severity === undefined) return;
     issues.push({ rule, severity, file, message, fix });
   };
 
   const wiki = loadWiki(root);
-  const foldersByName = new Map(profile.folders.map((f) => [f.name, f]));
 
   // Structure
   for (const folder of CORE_FOLDERS) {
@@ -80,7 +80,7 @@ export function validateWiki(root, profile) {
   }
 
   // Concept pages
-  const linkedFrom = new Map();
+  const linkedFrom = new Map<string, Set<string>>();
   for (const page of wiki.concepts) {
     const { rel, data, body } = page;
     if (!data) {
@@ -90,7 +90,7 @@ export function validateWiki(root, profile) {
     if (isBlank(data.type)) {
       add('okf.type', rel, 'Frontmatter has no "type".', 'Add a "type:" field.');
     }
-    const folder = page.folder ? foldersByName.get(page.folder) : undefined;
+    const folder = page.folder ? folderByName(profile, page.folder) : undefined;
     if (!folder) {
       add(
         'structure.unknown-folder',
@@ -100,19 +100,19 @@ export function validateWiki(root, profile) {
       );
     } else {
       if (!isBlank(data.type) && data.type !== folder.type) {
-        add('page.type', rel, `type is "${data.type}" but pages in ${folder.name}/ must be "${folder.type}".`, `Set "type: ${folder.type}" or move the page.`);
+        add('page.type', rel, `type is "${String(data.type)}" but pages in ${folder.name}/ must be "${folder.type}".`, `Set "type: ${folder.type}" or move the page.`);
       }
     }
     if (isBlank(data.title)) add('frontmatter.title', rel, 'Frontmatter has no "title".', 'Add a "title:" field.');
     if (isBlank(data.description)) add('frontmatter.description', rel, 'Frontmatter has no "description".', 'Add a one-sentence "description:" field.');
-    if (data.status !== undefined && !STATUSES.includes(data.status)) {
-      add('frontmatter.status', rel, `status "${data.status}" is not valid.`, `Use one of: ${STATUSES.join(', ')}.`);
+    if (data.status !== undefined && !STATUSES.includes(String(data.status))) {
+      add('frontmatter.status', rel, `status "${String(data.status)}" is not valid.`, `Use one of: ${STATUSES.join(', ')}.`);
     }
     if (data.status !== 'deprecated') {
       const { tier, outdated, last } = trustState(data, body);
       const review = `Review the page and run "okfcli verify ${rel} --by human:<id>".`;
       if (outdated) {
-        add('frontmatter.verified-outdated', rel, `Page changed after it was verified (last by ${last?.by ?? 'unknown'} on ${String(last?.at ?? '?').slice(0, 10)}).`, review);
+        add('frontmatter.verified-outdated', rel, `Page changed after it was verified (last by ${String(last?.by ?? 'unknown')} on ${String(last?.at ?? '?').slice(0, 10)}).`, review);
       } else if (tier === 'unverified') {
         add('frontmatter.verified', rel, 'Page has not been reviewed.', review);
       }
@@ -120,10 +120,8 @@ export function validateWiki(root, profile) {
 
     const { headings, links } = scanBody(body);
     if (folder) {
-      for (const section of folder.sections) {
-        if (!headings.includes(section)) {
-          add('page.sections', rel, `Missing required section "# ${section}".`, 'Run "okfcli validate --fix" to add the skeleton, then fill it in.');
-        }
+      for (const section of missingSections(folder, headings)) {
+        add('page.sections', rel, `Missing required section "# ${section}".`, 'Run "okfcli validate --fix" to add the skeleton, then fill it in.');
       }
     }
     const todos = countTodos(body);
@@ -131,14 +129,15 @@ export function validateWiki(root, profile) {
 
     for (const target of links) {
       if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.startsWith('#')) continue;
-      const path = target.split('#')[0];
+      const path = target.split('#')[0] ?? '';
       if (!path.endsWith('.md')) continue;
       const resolved = path.startsWith('/') ? path.slice(1) : posix.normalize(posix.join(posix.dirname(rel), path));
       if (!existsSync(join(root, resolved))) {
         add('link.broken', rel, `Broken link to ${target}.`, 'Fix the path or remove the link.');
       } else if (resolved !== rel) {
-        if (!linkedFrom.has(resolved)) linkedFrom.set(resolved, new Set());
-        linkedFrom.get(resolved).add(rel);
+        const from = linkedFrom.get(resolved) ?? new Set<string>();
+        from.add(rel);
+        linkedFrom.set(resolved, from);
       }
     }
   }

@@ -1,10 +1,11 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { join, relative, resolve, isAbsolute, sep } from 'node:path';
+import { isMap } from 'yaml';
 import { loadProfile } from '../profile.js';
 import { editFrontmatter, parseFrontmatter } from '../frontmatter.js';
 import { contentHash, countTodos, trustState, validVerifications } from '../trust.js';
-import { isoNow, toPosix, writeText } from '../util.js';
-import { UserError } from '../errors.js';
+import { UserError, isoNow, toPosix, writeText } from '../util.js';
+import type { CommandResult } from '../types.js';
 
 const ACTOR = /^(?:(?:human|process):\S+|[^\s/:]+\/\S+)$/;
 
@@ -26,7 +27,7 @@ A person can also verify by hand, by adding to the page frontmatter:
 (entries without a hash are never reported as outdated).`;
 
 // Accepts a path relative to the wiki or to the current directory.
-function locatePage(root, cwd, arg) {
+function locatePage(root: string, cwd: string, arg: string): { file: string; rel: string } {
   const withExt = arg.endsWith('.md') ? arg : `${arg}.md`;
   const candidates = [join(root, withExt)];
   if (!isAbsolute(withExt)) candidates.push(resolve(cwd, withExt));
@@ -39,7 +40,17 @@ function locatePage(root, cwd, arg) {
   throw new UserError(`Page not found: ${arg}. Use a path relative to the wiki, e.g. patterns/state-management.md.`);
 }
 
-export function verifyCommand({ root, cwd, path, by, force = false, now = new Date(), version }) {
+export interface VerifyOptions {
+  root: string;
+  cwd: string;
+  path: string | undefined;
+  by?: string | undefined;
+  force?: boolean | undefined;
+  now?: Date;
+  version: string;
+}
+
+export function verifyCommand({ root, cwd, path, by, force = false, now = new Date(), version }: VerifyOptions): CommandResult {
   loadProfile(root);
   if (!path) throw new UserError('Usage: okfcli verify <path> [--by <actor>]');
   const actor = by ?? process.env.OKFCLI_ACTOR ?? `okfcli/${version}`;
@@ -61,7 +72,7 @@ export function verifyCommand({ root, cwd, path, by, force = false, now = new Da
   const kept = validVerifications(data, body).filter((e) => e.by !== actor);
   const next = editFrontmatter(text, (doc) => {
     const seq = doc.createNode([...kept, entry]);
-    for (const item of seq.items) item.flow = true;
+    for (const item of seq.items) if (isMap(item)) item.flow = true;
     doc.set('verified', seq);
   });
   writeText(file, next);

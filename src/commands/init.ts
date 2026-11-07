@@ -6,8 +6,8 @@ import { regenerateIndexes } from '../indexer.js';
 import { requiredPages, testingStrategyPage } from '../templates.js';
 import { writeAgentFiles } from '../agents.js';
 import { findWikiRoot } from '../wiki.js';
-import { toPosix, writeText } from '../util.js';
-import { UserError } from '../errors.js';
+import { UserError, toPosix, writeText } from '../util.js';
+import type { CommandResult, Folder, AgentFileResult } from '../types.js';
 
 export const initHelp = `okfcli init [folder] [--with features,modules] [--language en] [--no-agents]
 
@@ -22,7 +22,7 @@ example after upgrading okfcli). It never touches the wiki pages.
   --language   language of the wiki content, informational only (default: en)
   --no-agents  do not generate the agent files`;
 
-function findExisting(cwd, dir) {
+function findExisting(cwd: string, dir: string | undefined): string | null {
   if (dir !== undefined) {
     const root = resolve(cwd, dir);
     return existsSync(join(root, PROFILE_FILE)) ? root : null;
@@ -34,8 +34,8 @@ function findExisting(cwd, dir) {
   }
 }
 
-function createWiki(root, withFolders, language) {
-  const known = new Map(OPTIONAL_FOLDERS.map((f) => [f.name, f]));
+function createWiki(root: string, withFolders: string[], language: string): string[] {
+  const known = new Map<string, Folder>(OPTIONAL_FOLDERS.map((f) => [f.name, f]));
   for (const name of withFolders) {
     if (!known.has(name)) {
       throw new UserError(`"${name}" is not an optional folder. Options: ${[...known.keys()].join(', ')}.`);
@@ -45,7 +45,7 @@ function createWiki(root, withFolders, language) {
   writeText(join(root, PROFILE_FILE), profileText);
 
   const created = [PROFILE_FILE];
-  for (const folder of [...CORE_FOLDERS, ...withFolders.map((n) => known.get(n))]) {
+  for (const folder of [...CORE_FOLDERS, ...withFolders.map((n) => known.get(n) as Folder)]) {
     mkdirSync(join(root, folder.name), { recursive: true });
     created.push(`${folder.name}/`);
   }
@@ -57,7 +57,16 @@ function createWiki(root, withFolders, language) {
   return created;
 }
 
-export function init({ cwd, dir, withFolders = [], language = 'en', agents = true, version }) {
+export interface InitOptions {
+  cwd: string;
+  dir?: string | undefined;
+  withFolders?: string[];
+  language?: string | undefined;
+  agents?: boolean;
+  version: string;
+}
+
+export function init({ cwd, dir, withFolders = [], language = 'en', agents = true, version }: InitOptions): CommandResult {
   const existing = findExisting(cwd, dir);
   if (existing && withFolders.length) {
     throw new UserError('A wiki already exists here: --with only applies when creating one. Add folders by creating pages with "okfcli new".');
@@ -66,7 +75,7 @@ export function init({ cwd, dir, withFolders = [], language = 'en', agents = tru
   const wikiRel = toPosix(relative(cwd, root)) || '.';
 
   const created = existing ? [] : createWiki(root, withFolders, language);
-  const agentFiles = agents ? writeAgentFiles({ projectRoot: cwd, wiki: wikiRel, profile: loadProfile(root), version }) : [];
+  const agentFiles: AgentFileResult[] = agents ? writeAgentFiles({ projectRoot: cwd, wiki: wikiRel, profile: loadProfile(root), version }) : [];
 
   const lines = [];
   if (existing) lines.push(`A wiki already exists in ${wikiRel}; its pages were not touched.`);

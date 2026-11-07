@@ -1,13 +1,15 @@
-import { parseArgs } from 'node:util';
+import { parseArgs, type ParseArgsConfig } from 'node:util';
 import { readFileSync } from 'node:fs';
-import { UserError } from './errors.js';
+import { UserError, errorCode } from './util.js';
 import { findWikiRoot } from './wiki.js';
+import type { CommandResult } from './types.js';
 import { init, initHelp } from './commands/init.js';
 import { newPage, newHelp } from './commands/new.js';
 import { validateCommand, validateHelp } from './commands/validate.js';
 import { verifyCommand, verifyHelp } from './commands/verify.js';
 
-const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+// The compiled file lives in dist/src/, two levels below package.json.
+const { version } = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as { version: string };
 
 const HELP = `okfcli ${version} - scaffolding and management of OKF wikis
 
@@ -29,9 +31,28 @@ const COMMON = {
   wiki: { type: 'string' },
   json: { type: 'boolean' },
   help: { type: 'boolean', short: 'h' },
-};
+} as const;
 
-const COMMANDS = {
+type Values = Record<string, string | boolean | (string | boolean)[] | undefined>;
+
+interface Context {
+  values: Values;
+  positionals: string[];
+  cwd: string;
+  /** The wiki to operate on (--wiki, else searched from cwd). Throws if there is none. */
+  root: () => string;
+}
+
+interface Command {
+  help: string;
+  options: NonNullable<ParseArgsConfig['options']>;
+  run: (ctx: Context) => CommandResult | Promise<CommandResult>;
+}
+
+const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
+const flag = (v: unknown): boolean => v === true;
+
+const COMMANDS: Record<string, Command> = {
   init: {
     help: initHelp,
     options: { with: { type: 'string' }, language: { type: 'string' }, 'no-agents': { type: 'boolean' } },
@@ -39,60 +60,52 @@ const COMMANDS = {
       init({
         cwd,
         dir: positionals[0],
-        withFolders: values.with ? values.with.split(',').map((s) => s.trim()).filter(Boolean) : [],
-        language: values.language,
-        agents: !values['no-agents'],
+        withFolders: str(values.with)?.split(',').map((s) => s.trim()).filter(Boolean) ?? [],
+        language: str(values.language),
+        agents: !flag(values['no-agents']),
         version,
       }),
   },
   new: {
     help: newHelp,
     options: { title: { type: 'string' }, description: { type: 'string' } },
-    needsWiki: true,
     run: ({ values, positionals, root }) => {
-      if (positionals.length < 2) throw new UserError('Usage: okfcli new <type> <name> --description "..."');
-      return newPage({
-        root,
-        type: positionals[0],
-        name: positionals[1],
-        title: values.title,
-        description: values.description,
-      });
+      const wiki = root();
+      const [type, name] = positionals;
+      if (!type || !name) throw new UserError('Usage: okfcli new <type> <name> --description "..."');
+      return newPage({ root: wiki, type, name, title: str(values.title), description: str(values.description) });
     },
   },
   verify: {
     help: verifyHelp,
     options: { by: { type: 'string' }, force: { type: 'boolean' } },
-    needsWiki: true,
     run: ({ values, positionals, root, cwd }) =>
-      verifyCommand({
-        root,
-        cwd,
-        path: positionals[0],
-        by: values.by,
-        force: values.force,
-        version,
-      }),
+      verifyCommand({ root: root(), cwd, path: positionals[0], by: str(values.by), force: flag(values.force), version }),
   },
   validate: {
     help: validateHelp,
     options: { fix: { type: 'boolean' }, strict: { type: 'boolean' } },
-    needsWiki: true,
-    run: ({ values, root }) => validateCommand({ root, fix: values.fix, strict: values.strict }),
+    run: ({ values, root }) => validateCommand({ root: root(), fix: flag(values.fix), strict: flag(values.strict) }),
   },
 };
 
-export async function run(argv, { cwd = process.cwd(), out = console.log, err = console.error } = {}) {
-  if (argv.length === 0 || argv[0] === '-h' || argv[0] === '--help' || argv[0] === 'help') {
+interface RunOptions {
+  cwd?: string;
+  out?: (text: string) => void;
+  err?: (text: string) => void;
+}
+
+export async function run(argv: string[], { cwd = process.cwd(), out = console.log, err = console.error }: RunOptions = {}): Promise<number> {
+  const [name, ...rest] = argv;
+  if (name === undefined || name === '-h' || name === '--help' || name === 'help') {
     out(HELP);
     return 0;
   }
-  if (argv[0] === '-v' || argv[0] === '--version') {
+  if (name === '-v' || name === '--version') {
     out(version);
     return 0;
   }
-  const [name, ...rest] = argv;
-  const command = COMMANDS[name];
+  const command = Object.hasOwn(COMMANDS, name) ? COMMANDS[name] : undefined;
   if (!command) {
     err(`Unknown command: ${name}\n\n${HELP}`);
     return 1;
@@ -107,18 +120,17 @@ export async function run(argv, { cwd = process.cwd(), out = console.log, err = 
       out(command.help);
       return 0;
     }
-    const root = command.needsWiki ? findWikiRoot(cwd, values.wiki) : undefined;
-    const result = await command.run({ values, positionals, cwd, root });
+    const result = await command.run({ values, positionals, cwd, root: () => findWikiRoot(cwd, str(values.wiki)) });
     if (values.json) {
-      const { text, ...data } = result;
+      const { text: _text, ...data } = result;
       out(JSON.stringify(data, null, 2));
     } else {
       out(result.text);
     }
     return result.ok === false ? 1 : 0;
   } catch (e) {
-    if (e instanceof UserError || e?.code?.startsWith?.('ERR_PARSE_ARGS')) {
-      err(`Error: ${e.message}`);
+    if (e instanceof UserError || errorCode(e)?.startsWith('ERR_PARSE_ARGS')) {
+      err(`Error: ${(e as Error).message}`);
       return 1;
     }
     throw e;

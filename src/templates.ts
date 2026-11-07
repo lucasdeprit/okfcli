@@ -1,39 +1,40 @@
 import { yamlScalar } from './util.js';
-import { CORE_FOLDERS } from './profile.js';
+import { coreFolder } from './profile.js';
+import type { Folder } from './types.js';
 
-const TODO = (section) => `<!-- TODO: ${section} -->`;
+export interface TemplatePage {
+  path: string;
+  text: string;
+}
 
-export function renderPage({ folder, title, description }) {
+// What a section looks like until someone writes it. Used by new pages and by `validate --fix`.
+export const sectionSkeleton = (section: string): string => `# ${section}\n\n<!-- TODO: ${section} -->\n`;
+
+export function renderPage({ folder, title, description }: { folder: Pick<Folder, 'type' | 'sections'>; title: string; description: string }): string {
   const front = ['---', `type: ${yamlScalar(folder.type)}`, `title: ${yamlScalar(title)}`, `description: ${yamlScalar(description)}`, '---'];
-  const sections = folder.sections.map((s) => `# ${s}\n\n${TODO(s)}\n`);
+  const sections = folder.sections.map(sectionSkeleton);
   return `${front.join('\n')}\n\n${sections.join('\n')}`;
 }
 
 // Scaffold of the testing strategy page. `init` and `validate --fix` create it
 // when testing/ has no page; it is not a required name, any testing page counts.
-export function testingStrategyPage() {
-  const folder = CORE_FOLDERS.find((f) => f.name === 'testing');
+export function testingStrategyPage(): TemplatePage {
   return {
     path: 'testing/strategy.md',
-    text: renderPage({ folder, title: 'Testing strategy', description: 'How testing is done in this project.' }),
+    text: renderPage({ folder: coreFolder('testing'), title: 'Testing strategy', description: 'How testing is done in this project.' }),
   };
 }
 
 // Required core pages (SPEC.md section 3). Created by `init`.
-export function requiredPages() {
+export function requiredPages(): TemplatePage[] {
   return [
     {
       path: 'overview/project.md',
-      text: [
-        renderPage({
-          folder: { type: 'Overview', sections: [] },
-          title: 'Project',
-          description: 'What the project is and who it is for.',
-        }).trimEnd(),
-        '',
-        `# Purpose\n\n${TODO('Purpose')}\n`,
-        `# Scope\n\n${TODO('Scope')}\n`,
-      ].join('\n'),
+      text: renderPage({
+        folder: coreFolder('overview'),
+        title: 'Project',
+        description: 'What the project is and who it is for.',
+      }),
     },
     {
       path: 'workflows/update-wiki.md',

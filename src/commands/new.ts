@@ -2,8 +2,8 @@ import { join } from 'node:path';
 import { findFolderByType, loadProfile, typeAlias } from '../profile.js';
 import { regenerateIndexes } from '../indexer.js';
 import { renderPage } from '../templates.js';
-import { assertKebabPath, createText, humanize } from '../util.js';
-import { UserError } from '../errors.js';
+import { UserError, assertKebabPath, createText, errorCode, humanize } from '../util.js';
+import type { CommandResult } from '../types.js';
 
 export const newHelp = `okfcli new <type> <name> --description "..." [--title "..."]
 
@@ -12,7 +12,15 @@ the index.md of its folder. The name is relative to the folder of the type
 (e.g. "state-management" or "ui/forms"). The type is the singular name: overview, architecture, pattern, convention, workflow,
 testing, feature, module, interface, operation, troubleshooting.`;
 
-export function newPage({ root, type, name, title, description }) {
+export interface NewPageOptions {
+  root: string;
+  type: string;
+  name: string;
+  title?: string | undefined;
+  description?: string | undefined;
+}
+
+export function newPage({ root, type, name, title, description }: NewPageOptions): CommandResult {
   const profile = loadProfile(root);
   const folder = findFolderByType(profile, type);
   if (!folder) {
@@ -27,7 +35,7 @@ export function newPage({ root, type, name, title, description }) {
 
   const rel = `${folder.name}/${slug}.md`;
   const file = join(root, rel);
-  const pageTitle = title?.trim() || humanize(slug.split('/').pop());
+  const pageTitle = title?.trim() || humanize(slug.split('/').pop() ?? slug);
   const text = renderPage({
     folder,
     title: pageTitle,
@@ -36,7 +44,7 @@ export function newPage({ root, type, name, title, description }) {
   try {
     createText(file, text);
   } catch (err) {
-    if (err.code === 'EEXIST') throw new UserError(`${rel} already exists. Edit it instead of creating it again.`);
+    if (errorCode(err) === 'EEXIST') throw new UserError(`${rel} already exists. Edit it instead of creating it again.`);
     throw err;
   }
 
