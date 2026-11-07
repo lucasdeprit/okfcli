@@ -1,18 +1,16 @@
 import { join } from 'node:path';
+import { AGENT_NAMES, AGENT_TARGETS, type AgentName } from './targets.js';
 import { typeAlias } from '../core/profile.js';
 import { UserError, readIfExists, writeWithStatus } from '../core/util.js';
 import type { AgentFileResult, Profile } from '../core/types.js';
 
-// Files generated for GitHub Copilot in VS Code (SPEC.md section 10):
-//  - a marked block in AGENTS.md (or .github/copilot-instructions.md) that always loads
-//  - three agent skills in .github/skills/ (open standard: agentskills.io)
+// Files generated for the coding agents (SPEC.md section 10; paths per agent in targets.ts):
+//  - a marked block in the instructions file the agent always loads
+//  - three agent skills (open standard: agentskills.io)
 // They belong to okfcli: running `okfcli init` again regenerates them.
 
 export const BLOCK_START = '<!-- okfcli:start -->';
 export const BLOCK_END = '<!-- okfcli:end -->';
-
-const SKILLS_DIR = '.github/skills';
-const POINTER_FILES: string[] = ['AGENTS.md', '.github/copilot-instructions.md'];
 
 export function pointerBlock(wiki: string): string {
   return [
@@ -106,9 +104,9 @@ Reviewing is a human act. You prepare the review; the person decides.
   );
 
   return [
-    { path: `${SKILLS_DIR}/okf-consult-wiki/SKILL.md`, text: consult },
-    { path: `${SKILLS_DIR}/okf-update-wiki/SKILL.md`, text: update },
-    { path: `${SKILLS_DIR}/okf-review-wiki/SKILL.md`, text: review },
+    { path: 'okf-consult-wiki/SKILL.md', text: consult },
+    { path: 'okf-update-wiki/SKILL.md', text: update },
+    { path: 'okf-review-wiki/SKILL.md', text: review },
   ];
 }
 
@@ -124,18 +122,41 @@ export function upsertBlock(current: string | null, block: string, file: string)
   return current.slice(0, start) + block.trimEnd() + current.slice(end + BLOCK_END.length);
 }
 
-// Which file carries the pointer block: the one that already has it, else the
-// first that exists, else a new AGENTS.md.
-export function pointerFile(projectRoot: string): string {
-  const withBlock = POINTER_FILES.find((f) => readIfExists(join(projectRoot, f))?.includes(BLOCK_START));
-  return withBlock ?? POINTER_FILES.find((f) => readIfExists(join(projectRoot, f)) !== null) ?? 'AGENTS.md';
+// Which of the candidate files carries the pointer block: the one that already
+// has it, else the first that exists, else the first candidate (created).
+export function pointerFile(projectRoot: string, candidates: readonly [string, ...string[]]): string {
+  const withBlock = candidates.find((f) => readIfExists(join(projectRoot, f))?.includes(BLOCK_START));
+  return withBlock ?? candidates.find((f) => readIfExists(join(projectRoot, f)) !== null) ?? candidates[0];
 }
 
-// Writes (or refreshes) the agent files. Returns [{ path, status }].
-export function writeAgentFiles({ projectRoot, wiki, profile, version }: { projectRoot: string; wiki: string; profile: Profile; version: string }): AgentFileResult[] {
-  const pointer = pointerFile(projectRoot);
-  const pointerPath = join(projectRoot, pointer);
-  const pointerText = upsertBlock(readIfExists(pointerPath), pointerBlock(wiki), pointer);
-  const files = [{ path: pointer, text: pointerText }, ...skillFiles({ wiki, profile, version })];
-  return files.map((f) => ({ path: f.path, status: writeWithStatus(join(projectRoot, f.path), f.text) }));
+interface WriteAgentFilesOptions {
+  projectRoot: string;
+  wiki: string;
+  profile: Profile;
+  version: string;
+  agents: AgentName[];
+}
+
+// Writes (or refreshes) the agent files of the chosen agents. Agents that share
+// a destination (several read AGENTS.md or .agents/skills) write it only once.
+export function writeAgentFiles({ projectRoot, wiki, profile, version, agents }: WriteAgentFilesOptions): AgentFileResult[] {
+  // Fixed order (not the caller's), so the result never depends on how the flags were typed.
+  const targets = AGENT_NAMES.filter((a) => agents.includes(a)).map((a) => AGENT_TARGETS[a]);
+  const abs = (rel: string): string => join(projectRoot, rel);
+
+  const files = new Map<string, string>();
+  for (const { instructions } of targets) {
+    const path = pointerFile(projectRoot, instructions);
+    if (files.has(path)) continue;
+    let current = readIfExists(abs(path));
+    // A new CLAUDE.md hides AGENTS.md from Claude Code, so it imports it.
+    if (current === null && instructions[0] === 'CLAUDE.md' && (files.has('AGENTS.md') || readIfExists(abs('AGENTS.md')) !== null)) {
+      current = '@AGENTS.md\n';
+    }
+    files.set(path, upsertBlock(current, pointerBlock(wiki), path));
+  }
+  for (const dir of new Set(targets.map((t) => t.skillsDir))) {
+    for (const skill of skillFiles({ wiki, profile, version })) files.set(`${dir}/${skill.path}`, skill.text);
+  }
+  return [...files].map(([path, text]) => ({ path, status: writeWithStatus(abs(path), text) }));
 }

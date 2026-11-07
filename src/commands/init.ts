@@ -5,16 +5,22 @@ import { CORE_FOLDERS, OPTIONAL_FOLDERS, PROFILE_FILE, PROFILE_ID, loadProfile }
 import { regenerateIndexes } from '../wiki/indexer.js';
 import { requiredPages, testingStrategyPage } from '../generate/templates.js';
 import { writeAgentFiles } from '../generate/agents.js';
+import { AGENT_NAMES, AGENT_TARGETS, DEFAULT_AGENTS, type AgentName } from '../generate/targets.js';
 import { findWikiRoot } from '../wiki/root.js';
 import { UserError, toPosix, writeText } from '../core/util.js';
 import type { CommandResult, Folder, AgentFileResult } from '../core/types.js';
 
-export const initHelp = `okfcli init [folder] [--with features,modules] [--language en] [--no-agents]
+export const initHelp = `okfcli init [folder] [--with features,modules] [--language en] ${AGENT_NAMES.map((n) => `[--${n}]`).join(' ')} [--no-agents]
 
 Creates a wiki with the base profile core (in ./wiki by default) and the files
-that connect it to GitHub Copilot, relative to the current directory:
-  AGENTS.md (or .github/copilot-instructions.md)   pointer block to the wiki
-  .github/skills/okf-*/SKILL.md                    skills to consult, update and review the wiki
+that connect it to your coding agents, relative to the current directory:
+  a pointer block to the wiki in the instructions file the agent loads
+  okf-consult-wiki, okf-update-wiki, okf-review-wiki skills (consult, update and review the wiki)
+
+Pass the agents you use; without any flag it connects ${DEFAULT_AGENTS.join(', ')}:
+${AGENT_NAMES.map((n) => `  --${n.padEnd(10)} ${AGENT_TARGETS[n].instructions[0]} + ${AGENT_TARGETS[n].skillsDir}/`).join('\n')}
+Flags can be combined (okfcli init --claude --codex). okfcli never deletes
+files, so files of an agent you stop passing stay where they are.
 
 Run it again in a project that already has a wiki to refresh those files (for
 example after upgrading okfcli). It never touches the wiki pages.
@@ -62,11 +68,12 @@ export interface InitOptions {
   dir?: string | undefined;
   withFolders?: string[];
   language?: string | undefined;
-  agents?: boolean;
+  /** Agents to connect. Default: Copilot. An empty list generates no agent files. */
+  agents?: AgentName[] | undefined;
   version: string;
 }
 
-export function init({ cwd, dir, withFolders = [], language = 'en', agents = true, version }: InitOptions): CommandResult {
+export function init({ cwd, dir, withFolders = [], language = 'en', agents = DEFAULT_AGENTS, version }: InitOptions): CommandResult {
   const existing = findExisting(cwd, dir);
   if (existing && withFolders.length) {
     throw new UserError('A wiki already exists here: --with only applies when creating one. Add folders by creating pages with "okfcli new".');
@@ -75,7 +82,7 @@ export function init({ cwd, dir, withFolders = [], language = 'en', agents = tru
   const wikiRel = toPosix(relative(cwd, root)) || '.';
 
   const created = existing ? [] : createWiki(root, withFolders, language);
-  const agentFiles: AgentFileResult[] = agents ? writeAgentFiles({ projectRoot: cwd, wiki: wikiRel, profile: loadProfile(root), version }) : [];
+  const agentFiles: AgentFileResult[] = agents.length ? writeAgentFiles({ projectRoot: cwd, wiki: wikiRel, profile: loadProfile(root), version, agents }) : [];
 
   const lines = [];
   if (existing) lines.push(`A wiki already exists in ${wikiRel}; its pages were not touched.`);

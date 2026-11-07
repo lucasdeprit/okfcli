@@ -4,6 +4,7 @@ import { UserError, errorCode } from './core/util.js';
 import { findWikiRoot } from './wiki/root.js';
 import type { CommandResult } from './core/types.js';
 import { init, initHelp } from './commands/init.js';
+import { AGENT_NAMES, DEFAULT_AGENTS, type AgentName } from './generate/targets.js';
 import { newPage, newHelp } from './commands/new.js';
 import { validateCommand, validateHelp } from './commands/validate.js';
 import { verifyCommand, verifyHelp } from './commands/verify.js';
@@ -14,7 +15,7 @@ const { version } = JSON.parse(readFileSync(new URL('../../package.json', import
 const HELP = `okfcli ${version} - scaffolding and management of OKF wikis
 
 Commands:
-  init [folder]             Create a wiki with the base profile and the files for Copilot (run again to refresh them)
+  init [folder]             Create a wiki and connect it to your agents (${AGENT_NAMES.map((n) => `--${n}`).join(' ')}; default: ${DEFAULT_AGENTS.join(', ')})
   new <type> <name>         Create a page and register it in its index
   validate [--fix]          Check the wiki (structure, indexes, review state); --fix repairs the mechanical issues
   verify <path>             Record that a page has been reviewed
@@ -52,17 +53,29 @@ interface Command {
 const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
 const flag = (v: unknown): boolean => v === true;
 
+// The agents named by flags; undefined (not an empty list) means none was given, so init uses its default.
+const pickedAgents = (values: Values): AgentName[] | undefined => {
+  const picked = AGENT_NAMES.filter((name) => flag(values[name]));
+  return picked.length ? picked : undefined;
+};
+
 const COMMANDS: Record<string, Command> = {
   init: {
     help: initHelp,
-    options: { with: { type: 'string' }, language: { type: 'string' }, 'no-agents': { type: 'boolean' } },
+    options: {
+      with: { type: 'string' },
+      language: { type: 'string' },
+      'no-agents': { type: 'boolean' },
+      // One boolean flag per supported agent (--claude, --codex, ...).
+      ...Object.fromEntries(AGENT_NAMES.map((name) => [name, { type: 'boolean' }] as const)),
+    },
     run: ({ values, positionals, cwd }) =>
       init({
         cwd,
         dir: positionals[0],
         withFolders: str(values.with)?.split(',').map((s) => s.trim()).filter(Boolean) ?? [],
         language: str(values.language),
-        agents: !flag(values['no-agents']),
+        agents: flag(values['no-agents']) ? [] : pickedAgents(values),
         version,
       }),
   },
