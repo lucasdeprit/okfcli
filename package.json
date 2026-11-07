@@ -34,7 +34,7 @@
     "SPEC.md"
   ],
   "scripts": {
-    "test": "node --test test/*.test.js",
+    "test": "node scripts/test.js",
     "pack:check": "npm pack --dry-run"
   },
   "engines": {
