@@ -96,6 +96,15 @@ export function loadProfile(wikiRoot: string): Profile {
   };
 }
 
+export const folderByName = (profile: Profile, name: string): Folder | undefined => profile.folders.find((f) => f.name === name);
+
+/** One of the base profile folders; they always exist. */
+export function coreFolder(name: string): Folder {
+  const folder = CORE_FOLDERS.find((f) => f.name === name);
+  if (!folder) throw new Error(`Unknown core folder: ${name}`);
+  return folder;
+}
+
 export function findFolderByType(profile: Profile, alias: string): Folder | undefined {
   return profile.folders.find((f) => typeAlias(f.type) === alias.toLowerCase());
 }

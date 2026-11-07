@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, type Dirent } from 'node:fs';
 import { join } from 'node:path';
 import { parseFrontmatter } from './frontmatter.js';
 import { RESERVED } from './util.js';
-import type { Page } from './types.js';
+import type { Folder, Page } from './types.js';
 
 // The one place that decides what is part of the wiki: hidden entries and
 // node_modules are skipped. Names are sorted by code unit, so output is the
@@ -48,6 +48,10 @@ export function loadWiki(root: string): { concepts: Page[]; indexes: { rel: stri
   }
   return { concepts, indexes, dirs };
 }
+
+// The sections a page of this folder still lacks, given its level-1 headings.
+export const missingSections = (folder: Pick<Folder, 'sections'>, headings: string[]): string[] =>
+  folder.sections.filter((s) => !headings.includes(s));
 
 // Level-1 headings and markdown links, ignoring fenced code blocks.
 export function scanBody(body: string): { headings: string[]; links: string[] } {

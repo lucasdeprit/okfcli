@@ -1,4 +1,4 @@
-import { loadProfile } from '../profile.js';
+import { folderByName, loadProfile } from '../profile.js';
 import { validateWiki } from '../validate.js';
 import { applyFixes } from '../fixes.js';
 import { loadWiki } from '../pages.js';
@@ -20,8 +20,7 @@ any error (with --strict, any warning too).
 // How many pages are at each trust tier. Deprecated pages are not asked to be
 // reviewed, so they are counted apart.
 function reviewSummary(root: string, profile: Profile): ReviewSummary {
-  const known = new Set(profile.folders.map((f) => f.name));
-  const pages = loadWiki(root).concepts.filter((c) => c.data && c.folder && known.has(c.folder));
+  const pages = loadWiki(root).concepts.filter((c) => c.data && c.folder && folderByName(profile, c.folder));
   const active = pages.filter((p) => p.data?.status !== 'deprecated');
   const states = active.map((p) => trustState(p.data, p.body));
   const count = (pred: (s: (typeof states)[number]) => boolean): number => states.filter(pred).length;

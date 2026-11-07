@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { parseFrontmatter } from './frontmatter.js';
 import { listDir, wikiDirs } from './pages.js';
 import { humanize, writeIfChanged, toPosix, RESERVED } from './util.js';
-import { OKF_VERSION } from './profile.js';
+import { OKF_VERSION, folderByName } from './profile.js';
 import type { Profile } from './types.js';
 
 const entryLine = (title: string, url: string, description: string): string =>
@@ -16,9 +16,9 @@ export function renderIndex(root: string, relDir: string, profile: Profile): str
   const absDir = join(root, relDir);
   const { md, dirs } = listDir(absDir);
   const pages = md.filter((name) => !RESERVED.has(name));
-  const folderMeta = (name: string) => (relDir === '' ? profile.folders.find((f) => f.name === name) : undefined);
+  const folderMeta = (name: string) => (relDir === '' ? folderByName(profile, name) : undefined);
   const prefix = relDir === '' ? '' : `/${relDir}`;
-  const ownMeta = relDir === '' ? undefined : profile.folders.find((f) => f.name === relDir);
+  const ownMeta = relDir === '' ? undefined : folderByName(profile, relDir);
   const heading = relDir === '' ? 'Index' : ownMeta?.title ?? humanize(relDir.split('/').pop() ?? relDir);
 
   const lines = [`# ${heading}`, ''];

@@ -150,3 +150,24 @@ test('a symlinked .md is neither a page nor listed in the index (one walk decide
     cleanup();
   }
 });
+
+test('validate --fix adds exactly the sections that validate reported as missing', async () => {
+  const { dir, cleanup } = tempDir();
+  try {
+    await okfcli(dir, 'init');
+    const page = join(dir, 'wiki', 'patterns', 'short.md');
+    writeFileSync(page, '---\ntype: Pattern\ntitle: Short\ndescription: d\n---\n\n# How\n\ntext\n');
+    const before = parseJson((await okfcli(dir, 'validate', '--json')).out);
+    const missing = before.issues
+      .filter((i: { rule: string; file: string }) => i.rule === 'page.sections' && i.file === 'patterns/short.md')
+      .map((i: { message: string }) => /"# (.+)"/.exec(i.message)?.[1]);
+    assert.deepEqual(missing, ['When to use', 'Example', 'Why']);
+    await okfcli(dir, 'validate', '--fix');
+    const text = readFileSync(page, 'utf8');
+    for (const section of missing) assert.match(text, new RegExp(`# ${section}\\n\\n<!-- TODO: ${section} -->`));
+    const after = parseJson((await okfcli(dir, 'validate', '--json')).out);
+    assert.ok(!after.issues.some((i: { rule: string }) => i.rule === 'page.sections'));
+  } finally {
+    cleanup();
+  }
+});

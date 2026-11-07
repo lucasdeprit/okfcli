@@ -1,9 +1,9 @@
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { CORE_FOLDERS } from './profile.js';
-import { loadWiki, scanBody } from './pages.js';
+import { CORE_FOLDERS, folderByName } from './profile.js';
+import { loadWiki, missingSections, scanBody } from './pages.js';
 import { regenerateIndexes } from './indexer.js';
-import { requiredPages, testingStrategyPage } from './templates.js';
+import { requiredPages, sectionSkeleton, testingStrategyPage } from './templates.js';
 import { writeText } from './util.js';
 import type { Profile } from './types.js';
 
@@ -30,16 +30,15 @@ export function applyFixes(root: string, profile: Profile): string[] {
     done.push(`Created ${page.path}`);
   }
 
-  const foldersByName = new Map(profile.folders.map((f) => [f.name, f]));
   for (const page of loadWiki(root).concepts) {
-    const folder = page.folder ? foldersByName.get(page.folder) : undefined;
+    const folder = page.folder ? folderByName(profile, page.folder) : undefined;
     if (!folder || !page.data) continue;
     const { headings } = scanBody(page.body);
-    const missing = folder.sections.filter((s) => !headings.includes(s));
+    const missing = missingSections(folder, headings);
     if (!missing.length) continue;
     const file = join(root, page.rel);
     const text = readFileSync(file, 'utf8').replace(/\s+$/, '');
-    const add = missing.map((s) => `# ${s}\n\n<!-- TODO: ${s} -->\n`).join('\n');
+    const add = missing.map(sectionSkeleton).join('\n');
     writeText(file, `${text}\n\n${add}`);
     done.push(`Added ${missing.map((s) => `"# ${s}"`).join(', ')} to ${page.rel}`);
   }

@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join, posix } from 'node:path';
-import { CORE_FOLDERS } from './profile.js';
-import { loadWiki, scanBody } from './pages.js';
+import { CORE_FOLDERS, folderByName } from './profile.js';
+import { loadWiki, missingSections, scanBody } from './pages.js';
 import { regenerateIndexes } from './indexer.js';
 import { KEBAB } from './util.js';
 import { requiredPages } from './templates.js';
@@ -43,7 +43,6 @@ export function validateWiki(root: string, profile: Profile): Issue[] {
   };
 
   const wiki = loadWiki(root);
-  const foldersByName = new Map(profile.folders.map((f) => [f.name, f]));
 
   // Structure
   for (const folder of CORE_FOLDERS) {
@@ -91,7 +90,7 @@ export function validateWiki(root: string, profile: Profile): Issue[] {
     if (isBlank(data.type)) {
       add('okf.type', rel, 'Frontmatter has no "type".', 'Add a "type:" field.');
     }
-    const folder = page.folder ? foldersByName.get(page.folder) : undefined;
+    const folder = page.folder ? folderByName(profile, page.folder) : undefined;
     if (!folder) {
       add(
         'structure.unknown-folder',
@@ -121,10 +120,8 @@ export function validateWiki(root: string, profile: Profile): Issue[] {
 
     const { headings, links } = scanBody(body);
     if (folder) {
-      for (const section of folder.sections) {
-        if (!headings.includes(section)) {
-          add('page.sections', rel, `Missing required section "# ${section}".`, 'Run "okfcli validate --fix" to add the skeleton, then fill it in.');
-        }
+      for (const section of missingSections(folder, headings)) {
+        add('page.sections', rel, `Missing required section "# ${section}".`, 'Run "okfcli validate --fix" to add the skeleton, then fill it in.');
       }
     }
     const todos = countTodos(body);
