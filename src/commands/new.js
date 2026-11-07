@@ -1,9 +1,8 @@
-import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { findFolderByType, loadProfile, typeAlias } from '../profile.js';
 import { regenerateIndexes } from '../indexer.js';
 import { renderPage } from '../templates.js';
-import { assertKebabPath, humanize, writeText } from '../util.js';
+import { assertKebabPath, createText, humanize } from '../util.js';
 import { UserError } from '../errors.js';
 
 export const newHelp = `okfcli new <type> <name> --description "..." [--title "..."]
@@ -29,16 +28,18 @@ export function newPage({ root, type, name, title, description }) {
 
   const rel = `${folder.name}/${slug}.md`;
   const file = join(root, rel);
-  if (existsSync(file)) {
-    throw new UserError(`${rel} already exists. Edit it instead of creating it again.`);
-  }
   const pageTitle = title?.trim() || humanize(slug.split('/').pop());
   const text = renderPage({
     folder,
     title: pageTitle,
     description: description.trim(),
   });
-  writeText(file, text);
+  try {
+    createText(file, text);
+  } catch (err) {
+    if (err.code === 'EEXIST') throw new UserError(`${rel} already exists. Edit it instead of creating it again.`);
+    throw err;
+  }
 
   const indexes = regenerateIndexes(root, profile);
   const sections = folder.sections.map((s) => `# ${s}`);

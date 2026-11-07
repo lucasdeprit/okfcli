@@ -2,10 +2,12 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { parse } from 'yaml';
 import { UserError } from './errors.js';
+import { KEBAB } from './util.js';
 
 export const PROFILE_ID = 'base@0.1';
 export const PROFILE_FILE = '.okf-profile.yaml';
 export const OKF_VERSION = '0.2';
+const SEVERITIES = ['error', 'warning', 'off'];
 
 // Base profile folders. Names and `type` are fixed; see SPEC.md section 3.
 const core = (name, type, title, description, sections) => ({
@@ -56,16 +58,34 @@ export function loadProfile(wikiRoot) {
   } catch (err) {
     throw new UserError(`${PROFILE_FILE} is not valid YAML: ${err.message}`);
   }
+  if (typeof config !== 'object' || Array.isArray(config)) {
+    throw new UserError(`${PROFILE_FILE} must be a YAML mapping.`);
+  }
+  if (config.extra_folders != null && !Array.isArray(config.extra_folders)) {
+    throw new UserError(`${PROFILE_FILE}: "extra_folders" must be a list.`);
+  }
+  const severity = config.severity ?? {};
+  if (typeof severity !== 'object' || Array.isArray(severity)) {
+    throw new UserError(`${PROFILE_FILE}: "severity" must be a mapping of rule to ${SEVERITIES.join(', ')}.`);
+  }
+  for (const [rule, level] of Object.entries(severity)) {
+    if (!SEVERITIES.includes(level)) {
+      throw new UserError(`${PROFILE_FILE}: severity of "${rule}" is "${level}"; use ${SEVERITIES.join(', ')}.`);
+    }
+  }
   const extra = (config.extra_folders ?? []).map((f) => {
     if (!f?.name || !f?.type) {
       throw new UserError(`${PROFILE_FILE}: every extra_folders entry needs "name" and "type".`);
+    }
+    if (typeof f.name !== 'string' || !KEBAB.test(f.name)) {
+      throw new UserError(`${PROFILE_FILE}: extra_folders name "${f.name}" must be kebab-case (lowercase letters, digits and hyphens).`);
     }
     const sections = (f.sections ?? []).map((s) => String(s).replace(/^#+\s*/, ''));
     return { name: f.name, type: f.type, title: f.title ?? f.type, description: f.description ?? '', sections, core: false, extra: true };
   });
   return {
     config,
-    severity: config.severity ?? {},
+    severity,
     folders: [...CORE_FOLDERS, ...OPTIONAL_FOLDERS, ...extra],
   };
 }
