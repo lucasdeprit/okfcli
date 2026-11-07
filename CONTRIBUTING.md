@@ -27,7 +27,7 @@ src/
   index.ts   public API
 ```
 
-Dependencies go one way: `core` <- `wiki` and `generate` <- `commands` <- `cli`. A `core` module never imports from the other folders.
+Dependencies go one way: `core` <- `generate` <- `wiki` <- `commands` <- `cli`. A folder never imports from one to its right (`core` imports nothing from the others; `generate` does not import from `wiki`).
 
 ## Guidelines
 
