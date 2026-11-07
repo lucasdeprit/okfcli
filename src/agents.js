@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { typeAlias } from './profile.js';
 import { writeText } from './util.js';
+import { UserError } from './errors.js';
 
 // Files generated for GitHub Copilot in VS Code (SPEC.md section 10):
 //  - a marked block in AGENTS.md (or .github/copilot-instructions.md) that always loads
@@ -37,6 +38,8 @@ function typeList(profile) {
 }
 
 export function skillFiles({ wiki, profile, version }) {
+  // Quoted only when needed, so paths with spaces still work in the commands agents run.
+  const wikiArg = /^[\w./@+-]+$/.test(wiki) ? wiki : JSON.stringify(wiki);
   const consult = skill(
     'okf-consult-wiki',
     'Find project knowledge in the wiki before writing or changing code: architecture, patterns, conventions, workflows and testing rules. Use at the start of any task that touches the codebase.',
@@ -65,7 +68,7 @@ The wiki lives in \`${wiki}/\`. The \`okfcli\` CLI does the mechanical work; you
 1. Check whether the change touches knowledge that is already documented. If so, **edit that page in place**. Do not create a duplicate, and do not add a page that only records a decision: put the reason in the page's \`# Why\` section.
 2. For new knowledge, create the page with the CLI, not by hand:
 
-   \`okfcli new <type> <name> --description "<one sentence>" --wiki ${wiki}\`
+   \`okfcli new <type> <name> --description "<one sentence>" --wiki ${wikiArg}\`
 
    It creates the file with its frontmatter and required sections, and registers it in the folder index. Types:
 
@@ -75,7 +78,7 @@ ${typeList(profile)}
 3. Fill in every section and delete the \`<!-- TODO -->\` comments. Write in the language the existing pages use.
 4. Never edit \`index.md\` files and never write \`verified\` entries: you are not a reviewer. New and edited pages stay unreviewed until a person verifies them.
 5. If something no longer applies, set \`status: deprecated\` in that page's frontmatter instead of deleting it.
-6. Run \`okfcli validate --fix --wiki ${wiki}\`, then fix whatever it still reports (it names the file, the rule and how to fix it).
+6. Run \`okfcli validate --fix --wiki ${wikiArg}\`, then fix whatever it still reports (it names the file, the rule and how to fix it).
 `,
     version,
   );
@@ -88,17 +91,17 @@ ${typeList(profile)}
 
 Reviewing is a human act. You prepare the review; the person decides.
 
-1. Run \`okfcli validate --json --wiki ${wiki}\`. The pages to review are the issues with rule \`frontmatter.verified\` (never reviewed) or \`frontmatter.verified-outdated\` (changed after being verified). The \`review\` field has the totals.
+1. Run \`okfcli validate --json --wiki ${wikiArg}\`. The pages to review are the issues with rule \`frontmatter.verified\` (never reviewed) or \`frontmatter.verified-outdated\` (changed after being verified). The \`review\` field has the totals.
 2. Pick one page at a time (ask the person where to start if there are many). Summarise it, check it against the code, and point out anything that looks wrong or missing. Fix problems with the person's agreement.
 3. A page with unfilled \`<!-- TODO -->\` comments is not ready: complete it first.
 4. Ask the person explicitly whether they confirm the page. Only after a clear yes, run:
 
-   \`okfcli verify <path> --by human:<id> --wiki ${wiki}\`
+   \`okfcli verify <path> --by human:<id> --wiki ${wikiArg}\`
 
    where \`<id>\` identifies that person (ask if you do not know it).
 5. Never use a \`human:\` actor for yourself, never verify a page the person has not confirmed, and never write \`verified\` entries by hand.
 6. If the person does not confirm a page, leave it as it is and move on.
-7. Finish with \`okfcli validate --wiki ${wiki}\` and report how many pages are still unreviewed.
+7. Finish with \`okfcli validate --wiki ${wikiArg}\` and report how many pages are still unreviewed.
 `,
     version,
   );
@@ -115,9 +118,12 @@ export function upsertBlock(file, block) {
   const text = existsSync(file) ? readFileSync(file, 'utf8') : null;
   if (text === null) return { next: block, status: 'created' };
   const start = text.indexOf(BLOCK_START);
-  const end = text.indexOf(BLOCK_END);
+  const end = start === -1 ? -1 : text.indexOf(BLOCK_END, start);
   let next;
-  if (start !== -1 && end > start) {
+  if (start !== -1 && end === -1) {
+    throw new UserError(`${file} has "${BLOCK_START}" without "${BLOCK_END}". Fix or remove the marker, then run "okfcli init" again.`);
+  }
+  if (start !== -1) {
     next = text.slice(0, start) + block.trimEnd() + text.slice(end + BLOCK_END.length);
   } else {
     next = `${text.replace(/\s+$/, '')}${text.trim() ? '\n\n' : ''}${block}`;

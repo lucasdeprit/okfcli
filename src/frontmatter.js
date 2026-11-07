@@ -1,4 +1,5 @@
 import { parse, parseDocument } from 'yaml';
+import { UserError } from './errors.js';
 
 const FENCE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/;
 
@@ -18,7 +19,7 @@ export function parseFrontmatter(text) {
 // the rest of the file untouched. Returns the new text.
 export function editFrontmatter(text, mutate) {
   const match = FENCE.exec(text);
-  if (!match) throw new Error('No frontmatter to edit');
+  if (!match) throw new UserError('The page has no frontmatter to edit.');
   const doc = parseDocument(match[1]);
   mutate(doc);
   return `---\n${doc.toString({ lineWidth: 0 }).trimEnd()}\n---\n${text.slice(match[0].length)}`;

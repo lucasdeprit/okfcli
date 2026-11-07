@@ -1,9 +1,9 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { join, relative, resolve, isAbsolute } from 'node:path';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { join, relative, resolve, isAbsolute, sep } from 'node:path';
 import { loadProfile } from '../profile.js';
 import { editFrontmatter, parseFrontmatter } from '../frontmatter.js';
 import { contentHash, countTodos, trustState, validVerifications } from '../trust.js';
-import { isoNow, toPosix } from '../util.js';
+import { isoNow, toPosix, writeText } from '../util.js';
 import { UserError } from '../errors.js';
 
 const ACTOR = /^(?:(?:human|process):\S+|[^\s/:]+\/\S+)$/;
@@ -31,8 +31,10 @@ function locatePage(root, cwd, arg) {
   const candidates = [join(root, withExt)];
   if (!isAbsolute(withExt)) candidates.push(resolve(cwd, withExt));
   for (const file of candidates) {
-    const rel = toPosix(relative(root, file));
-    if (!rel.startsWith('..') && existsSync(file)) return { file, rel };
+    if (!existsSync(file)) continue;
+    // Resolve symlinks too, so a link inside the wiki cannot point at a file outside it.
+    const rel = relative(realpathSync(root), realpathSync(file));
+    if (rel && rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel)) return { file, rel: toPosix(rel) };
   }
   throw new UserError(`Page not found: ${arg}. Use a path relative to the wiki, e.g. patterns/state-management.md.`);
 }
@@ -62,7 +64,7 @@ export function verifyCommand({ root, cwd, path, by, force = false, now = new Da
     for (const item of seq.items) item.flow = true;
     doc.set('verified', seq);
   });
-  writeFileSync(file, next);
+  writeText(file, next);
 
   const after = parseFrontmatter(next);
   const { tier } = trustState(after.data, after.body);

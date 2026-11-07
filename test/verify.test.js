@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tempDir, okfcli } from './helpers.js';
+import { parseFrontmatter } from '../src/frontmatter.js';
 
 const W = (dir, rel) => join(dir, 'wiki', rel);
 const read = (dir, rel) => readFileSync(W(dir, rel), 'utf8');
@@ -32,7 +33,11 @@ test('verify adds { by, at, hash } and keeps the rest of the file intact', async
     assert.equal(data.verified.length, 1);
     const page = read(dir, 'patterns/state.md');
     assert.match(page, /# keep this comment/);
-    assert.match(page, /verified:\n  - \{ by: human:ana, at: \d{4}-\d{2}-\d{2}T[\d:]+Z, hash: [0-9a-f]{16} \}/);
+    // Compare the parsed data, not the exact YAML layout, which depends on the yaml version.
+    const [entry] = parseFrontmatter(page).data.verified;
+    assert.equal(entry.by, 'human:ana');
+    assert.match(String(entry.at instanceof Date ? entry.at.toISOString() : entry.at), /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/);
+    assert.match(entry.hash, /^[0-9a-f]{16}$/);
     assert.match(page, /\n---\n\n# When to use\n\nAlways\.\n/);
   } finally {
     cleanup();
@@ -60,7 +65,8 @@ test('verify converts a single hand-written mapping into a list', async () => {
     await setup(dir, 'verified: { by: human:bo, at: 2026-10-01T00:00:00Z }\n');
     await okfcli(dir, 'verify', 'patterns/state', '--by', 'process:ci');
     const page = read(dir, 'patterns/state.md');
-    assert.match(page, /verified:\n  - \{ by: human:bo, at: 2026-10-01T00:00:00Z \}\n  - \{ by: process:ci,/);
+    const verified = parseFrontmatter(page).data.verified;
+    assert.deepEqual(verified.map((e) => e.by), ['human:bo', 'process:ci']);
   } finally {
     cleanup();
   }

@@ -76,7 +76,7 @@ export function regenerateIndexes(root, profile, { check = false } = {}) {
     const file = join(root, rel, 'index.md');
     const text = renderIndex(root, rel, profile);
     const current = existsSync(file) && statSync(file).isFile() ? readFileSync(file, 'utf8') : null;
-    if (current === text) continue;
+    if (current !== null && current.replace(/\r\n/g, '\n') === text) continue;
     if (!check) writeIfChanged(file, text);
     changed.push(toPosix(rel ? `${rel}/index.md` : 'index.md'));
   }
