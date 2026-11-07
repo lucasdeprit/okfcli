@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseFrontmatter } from './frontmatter.js';
 
-// log.md is reserved by OKF: okw does not manage it, but it is never a concept page.
+// log.md is reserved by OKF: okfcli does not manage it, but it is never a concept page.
 const RESERVED = new Set(['index.md', 'log.md']);
 
 // Walks the wiki and loads every markdown file. Hidden folders are skipped.

@@ -4,12 +4,12 @@ import { join } from 'node:path';
 import { run } from '../src/cli.js';
 
 export function tempDir() {
-  const dir = mkdtempSync(join(tmpdir(), 'okw-'));
+  const dir = mkdtempSync(join(tmpdir(), 'okfcli-'));
   return { dir, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
 }
 
 // Runs the CLI capturing output and exit code.
-export async function okw(cwd, ...args) {
+export async function okfcli(cwd, ...args) {
   const out = [];
   const err = [];
   const code = await run(args, { cwd, out: (s) => out.push(s), err: (s) => err.push(s) });

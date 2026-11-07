@@ -8,7 +8,7 @@ import { UserError } from '../errors.js';
 
 const ACTOR = /^(?:(?:human|process):\S+|[^\s/:]+\/\S+)$/;
 
-export const verifyHelp = `okw verify <path> [--by <actor>] [--force]
+export const verifyHelp = `okfcli verify <path> [--by <actor>] [--force]
 
 Records that a page has been reviewed: adds { by, at, hash } to "verified".
 The hash fingerprints the content that was read; if the page is edited later,
@@ -16,7 +16,7 @@ the verification is reported as outdated until it is verified again.
 One entry per actor: a repeat verification replaces the previous one.
 The path is relative to the wiki, with or without ".md".
   --by     actor: human:<id>, process:<id> or <tool>/<version>.
-           Default: $OKW_ACTOR, else okw/<version> (machine-confirmed).
+           Default: $OKFCLI_ACTOR, else okfcli/<version> (machine-confirmed).
            Use human:<id> only when a person has actually reviewed the page.
   --force  verify even if the page still has unfilled TODO placeholders
 
@@ -39,8 +39,8 @@ function locatePage(root, cwd, arg) {
 
 export function verifyCommand({ root, cwd, path, by, force = false, now = new Date(), version }) {
   loadProfile(root);
-  if (!path) throw new UserError('Usage: okw verify <path> [--by <actor>]');
-  const actor = by ?? process.env.OKW_ACTOR ?? `okw/${version}`;
+  if (!path) throw new UserError('Usage: okfcli verify <path> [--by <actor>]');
+  const actor = by ?? process.env.OKFCLI_ACTOR ?? `okfcli/${version}`;
   if (!ACTOR.test(actor)) {
     throw new UserError(`Invalid actor "${actor}". Use human:<id>, process:<id> or <tool>/<version>.`);
   }
@@ -48,7 +48,7 @@ export function verifyCommand({ root, cwd, path, by, force = false, now = new Da
   const { file, rel } = locatePage(root, cwd, path);
   const text = readFileSync(file, 'utf8');
   const { data, body } = parseFrontmatter(text);
-  if (!data) throw new UserError(`${rel} has no parseable frontmatter; fix it first (okw validate).`);
+  if (!data) throw new UserError(`${rel} has no parseable frontmatter; fix it first (okfcli validate).`);
   const todos = countTodos(body);
   if (todos && !force) {
     throw new UserError(`${rel} still has ${todos} unfilled TODO placeholder${todos > 1 ? 's' : ''}. Fill them in before verifying (or use --force).`);

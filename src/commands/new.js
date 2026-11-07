@@ -6,7 +6,7 @@ import { renderPage } from '../templates.js';
 import { assertKebabPath, humanize, writeText } from '../util.js';
 import { UserError } from '../errors.js';
 
-export const newHelp = `okw new <type> <name> --description "..." [--title "..."]
+export const newHelp = `okfcli new <type> <name> --description "..." [--title "..."]
 
 Creates a page with frontmatter and a section skeleton, registers it in the
 index.md of its folder. The name is relative to

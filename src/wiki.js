@@ -8,7 +8,7 @@ export function findWikiRoot(cwd, explicit) {
   if (explicit) {
     const root = resolve(cwd, explicit);
     if (!existsSync(join(root, PROFILE_FILE))) {
-      throw new UserError(`${explicit} is not an okw wiki (${PROFILE_FILE} is missing).`);
+      throw new UserError(`${explicit} is not an okfcli wiki (${PROFILE_FILE} is missing).`);
     }
     return root;
   }
@@ -23,5 +23,5 @@ export function findWikiRoot(cwd, explicit) {
     if (parent === dir) break;
     dir = parent;
   }
-  throw new UserError(`No okw wiki found from ${cwd}. Run "okw init" or use --wiki <folder>.`);
+  throw new UserError(`No okfcli wiki found from ${cwd}. Run "okfcli init" or use --wiki <folder>.`);
 }

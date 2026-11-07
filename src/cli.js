@@ -9,7 +9,7 @@ import { verifyCommand, verifyHelp } from './commands/verify.js';
 
 const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 
-const HELP = `okw ${version} - scaffolding and management of OKF wikis
+const HELP = `okfcli ${version} - scaffolding and management of OKF wikis
 
 Commands:
   init [folder]             Create a wiki with the base profile and the files for Copilot (run again to refresh them)
@@ -23,7 +23,7 @@ Common options:
   -h, --help                Help for a command
   -v, --version
 
-Run "okw <command> --help" for details.`;
+Run "okfcli <command> --help" for details.`;
 
 const COMMON = {
   wiki: { type: 'string' },
@@ -50,7 +50,7 @@ const COMMANDS = {
     options: { title: { type: 'string' }, description: { type: 'string' } },
     needsWiki: true,
     run: ({ values, positionals, root }) => {
-      if (positionals.length < 2) throw new UserError('Usage: okw new <type> <name> --description "..."');
+      if (positionals.length < 2) throw new UserError('Usage: okfcli new <type> <name> --description "..."');
       return newPage({
         root,
         type: positionals[0],

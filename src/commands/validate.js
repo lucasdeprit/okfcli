@@ -3,7 +3,7 @@ import { validateWiki } from '../validate.js';
 import { applyFixes } from '../fixes.js';
 import { reviewSummary } from '../review.js';
 
-export const validateHelp = `okw validate [--fix] [--strict]
+export const validateHelp = `okfcli validate [--fix] [--strict]
 
 Checks the wiki against OKF v0.2 and the base profile (see SPEC.md section 8):
 structure, sections, links, indexes and review state (which pages nobody has

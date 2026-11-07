@@ -47,23 +47,23 @@ export function validateWiki(root, profile) {
   // Structure
   for (const folder of CORE_FOLDERS) {
     if (!existsSync(join(root, folder.name))) {
-      add('structure.core-folder', `${folder.name}/`, `Core folder "${folder.name}/" is missing.`, 'Run "okw validate --fix" to create it.');
+      add('structure.core-folder', `${folder.name}/`, `Core folder "${folder.name}/" is missing.`, 'Run "okfcli validate --fix" to create it.');
     }
   }
   for (const page of requiredPages()) {
     if (!existsSync(join(root, page.path))) {
-      add('structure.required-page', page.path, `Required page ${page.path} is missing.`, 'Run "okw validate --fix" to recreate it.');
+      add('structure.required-page', page.path, `Required page ${page.path} is missing.`, 'Run "okfcli validate --fix" to recreate it.');
     }
   }
   if (existsSync(join(root, 'testing')) && !wiki.concepts.some((c) => c.folder === 'testing')) {
-    add('structure.testing-page', 'testing/', 'testing/ has no strategy page.', 'Run "okw validate --fix" to scaffold testing/strategy.md, or create one with "okw new testing <name>".');
+    add('structure.testing-page', 'testing/', 'testing/ has no strategy page.', 'Run "okfcli validate --fix" to scaffold testing/strategy.md, or create one with "okfcli new testing <name>".');
   }
 
   // Names
   for (const rel of [...wiki.dirs, ...wiki.concepts.map((c) => c.rel.replace(/\.md$/, ''))]) {
     const bad = rel.split('/').find((seg) => !KEBAB.test(seg));
     if (bad) {
-      add('name.kebab-case', rel, `"${bad}" is not kebab-case.`, 'Rename it using lowercase letters, digits and hyphens, then run "okw validate --fix".');
+      add('name.kebab-case', rel, `"${bad}" is not kebab-case.`, 'Rename it using lowercase letters, digits and hyphens, then run "okfcli validate --fix".');
     }
   }
 
@@ -74,7 +74,7 @@ export function validateWiki(root, profile) {
       const keys = [...idx.text.matchAll(/^([A-Za-z_][\w-]*):/gm)].map((m) => m[1]);
       const allowed = idx.rel === 'index.md' && keys.every((k) => k === 'okf_version');
       if (!allowed) {
-        add('okf.index', idx.rel, 'index.md must not have frontmatter (only the root one may carry okf_version).', 'Run "okw validate --fix" to regenerate it.');
+        add('okf.index', idx.rel, 'index.md must not have frontmatter (only the root one may carry okf_version).', 'Run "okfcli validate --fix" to regenerate it.');
       }
     }
   }
@@ -110,7 +110,7 @@ export function validateWiki(root, profile) {
     }
     if (data.status !== 'deprecated') {
       const { tier, outdated, last } = trustState(data, body);
-      const review = `Review the page and run "okw verify ${rel} --by human:<id>".`;
+      const review = `Review the page and run "okfcli verify ${rel} --by human:<id>".`;
       if (outdated) {
         add('frontmatter.verified-outdated', rel, `Page changed after it was verified (last by ${last?.by ?? 'unknown'} on ${String(last?.at ?? '?').slice(0, 10)}).`, review);
       } else if (tier === 'unverified') {
@@ -122,7 +122,7 @@ export function validateWiki(root, profile) {
     if (folder) {
       for (const section of folder.sections) {
         if (!headings.includes(section)) {
-          add('page.sections', rel, `Missing required section "# ${section}".`, 'Run "okw validate --fix" to add the skeleton, then fill it in.');
+          add('page.sections', rel, `Missing required section "# ${section}".`, 'Run "okfcli validate --fix" to add the skeleton, then fill it in.');
         }
       }
     }
@@ -151,7 +151,7 @@ export function validateWiki(root, profile) {
 
   // Indexes
   for (const rel of regenerateIndexes(root, profile, { check: true })) {
-    add('index.out-of-date', rel, 'This index does not match the pages in its folder (or is missing).', 'Run "okw validate --fix" to regenerate it.');
+    add('index.out-of-date', rel, 'This index does not match the pages in its folder (or is missing).', 'Run "okfcli validate --fix" to regenerate it.');
   }
 
   const order = { error: 0, warning: 1 };

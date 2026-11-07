@@ -48,7 +48,7 @@ export const typeAlias = (type) => type.toLowerCase().replace(/\s+/g, '-');
 export function loadProfile(wikiRoot) {
   const file = join(wikiRoot, PROFILE_FILE);
   if (!existsSync(file)) {
-    throw new UserError(`${PROFILE_FILE} not found in ${wikiRoot}. Is this an okw wiki? Run "okw init".`);
+    throw new UserError(`${PROFILE_FILE} not found in ${wikiRoot}. Is this an okfcli wiki? Run "okfcli init".`);
   }
   let config;
   try {
