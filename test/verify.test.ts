@@ -1,10 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { withTempDir, okfcli, wikiFile, readWiki, parseJson, type Json } from './helpers.js';
 import { parseFrontmatter } from '../src/core/frontmatter.js';
 
+// The compiled test lives in dist/test/, two levels below package.json.
+const { version } = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as { version: string };
 
 // A pattern page whose placeholders are filled in, with a frontmatter comment to check it survives.
 const filled = (extraFront = '') =>
@@ -66,7 +68,7 @@ test('verify defaults to a machine actor, and honours OKFCLI_ACTOR', async () =>
     await setup(dir);
     const r = parseJson((await okfcli(dir, 'verify', 'patterns/state', '--json')).out);
     assert.equal(r.tier, 'machine-confirmed');
-    assert.equal(r.verified[0].by, 'okfcli/0.1.0');
+    assert.equal(r.verified[0].by, `okfcli/${version}`);
   });
 });
 
