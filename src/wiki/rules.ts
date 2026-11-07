@@ -1,12 +1,12 @@
 import { existsSync } from 'node:fs';
 import { join, posix } from 'node:path';
-import { CORE_FOLDERS, folderByName } from './profile.js';
+import { CORE_FOLDERS, folderByName } from '../core/profile.js';
 import { loadWiki, missingSections, scanBody } from './pages.js';
 import { regenerateIndexes } from './indexer.js';
-import { KEBAB } from './util.js';
-import { requiredPages } from './templates.js';
-import { countTodos, trustState } from './trust.js';
-import type { Issue, Profile } from './types.js';
+import { KEBAB } from '../core/util.js';
+import { requiredPages } from '../generate/templates.js';
+import { countTodos, trustState } from '../core/trust.js';
+import type { Issue, Profile } from '../core/types.js';
 
 export const DEFAULT_SEVERITY: Record<string, 'error' | 'warning'> = {
   'okf.frontmatter': 'error',

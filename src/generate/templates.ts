@@ -1,6 +1,6 @@
-import { yamlScalar } from './util.js';
-import { coreFolder } from './profile.js';
-import type { Folder } from './types.js';
+import { yamlScalar } from '../core/util.js';
+import { coreFolder } from '../core/profile.js';
+import type { Folder } from '../core/types.js';
 
 export interface TemplatePage {
   path: string;

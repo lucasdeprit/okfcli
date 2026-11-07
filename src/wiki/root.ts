@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { PROFILE_FILE } from './profile.js';
-import { UserError } from './util.js';
+import { PROFILE_FILE } from '../core/profile.js';
+import { UserError } from '../core/util.js';
 
 // The wiki root is the folder that contains .okf-profile.yaml.
 export function findWikiRoot(cwd: string, explicit?: string): string {

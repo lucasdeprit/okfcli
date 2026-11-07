@@ -15,6 +15,20 @@ node dist/bin/okfcli.js --help
 
 Requires Node 20 or later. The source is TypeScript in `src/`, `bin/` and `test/`; `dist/` is generated and not committed.
 
+## Layout
+
+```
+src/
+  core/      types, util, profile, frontmatter, trust   (no dependency on the rest)
+  wiki/      reading the wiki: pages, indexer, rules (validate), fixes, root lookup
+  generate/  text and files okfcli writes: page templates, agent files
+  commands/  one file per CLI command
+  cli.ts     argument parsing and dispatch
+  index.ts   public API
+```
+
+Dependencies go one way: `core` <- `wiki` and `generate` <- `commands` <- `cli`. A `core` module never imports from the other folders.
+
 ## Guidelines
 
 - Keep the CLI small: four commands (`init`, `new`, `validate`, `verify`). Open an issue before proposing a new one.

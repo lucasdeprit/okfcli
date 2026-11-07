@@ -1,13 +1,13 @@
 import { existsSync, mkdirSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { stringify } from 'yaml';
-import { CORE_FOLDERS, OPTIONAL_FOLDERS, PROFILE_FILE, PROFILE_ID, loadProfile } from '../profile.js';
-import { regenerateIndexes } from '../indexer.js';
-import { requiredPages, testingStrategyPage } from '../templates.js';
-import { writeAgentFiles } from '../agents.js';
-import { findWikiRoot } from '../wiki.js';
-import { UserError, toPosix, writeText } from '../util.js';
-import type { CommandResult, Folder, AgentFileResult } from '../types.js';
+import { CORE_FOLDERS, OPTIONAL_FOLDERS, PROFILE_FILE, PROFILE_ID, loadProfile } from '../core/profile.js';
+import { regenerateIndexes } from '../wiki/indexer.js';
+import { requiredPages, testingStrategyPage } from '../generate/templates.js';
+import { writeAgentFiles } from '../generate/agents.js';
+import { findWikiRoot } from '../wiki/root.js';
+import { UserError, toPosix, writeText } from '../core/util.js';
+import type { CommandResult, Folder, AgentFileResult } from '../core/types.js';
 
 export const initHelp = `okfcli init [folder] [--with features,modules] [--language en] [--no-agents]
 

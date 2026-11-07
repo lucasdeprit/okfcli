@@ -1,7 +1,7 @@
 import { join } from 'node:path';
-import { typeAlias } from './profile.js';
-import { UserError, readIfExists, writeWithStatus } from './util.js';
-import type { AgentFileResult, Profile } from './types.js';
+import { typeAlias } from '../core/profile.js';
+import { UserError, readIfExists, writeWithStatus } from '../core/util.js';
+import type { AgentFileResult, Profile } from '../core/types.js';
 
 // Files generated for GitHub Copilot in VS Code (SPEC.md section 10):
 //  - a marked block in AGENTS.md (or .github/copilot-instructions.md) that always loads

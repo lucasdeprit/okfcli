@@ -1,8 +1,8 @@
 import { parseArgs, type ParseArgsConfig } from 'node:util';
 import { readFileSync } from 'node:fs';
-import { UserError, errorCode } from './util.js';
-import { findWikiRoot } from './wiki.js';
-import type { CommandResult } from './types.js';
+import { UserError, errorCode } from './core/util.js';
+import { findWikiRoot } from './wiki/root.js';
+import type { CommandResult } from './core/types.js';
 import { init, initHelp } from './commands/init.js';
 import { newPage, newHelp } from './commands/new.js';
 import { validateCommand, validateHelp } from './commands/validate.js';

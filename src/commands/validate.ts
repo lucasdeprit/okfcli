@@ -1,9 +1,9 @@
-import { folderByName, loadProfile } from '../profile.js';
-import { validateWiki } from '../validate.js';
-import { applyFixes } from '../fixes.js';
-import { loadWiki } from '../pages.js';
-import { trustState } from '../trust.js';
-import type { CommandResult, Profile, ReviewSummary } from '../types.js';
+import { folderByName, loadProfile } from '../core/profile.js';
+import { validateWiki } from '../wiki/rules.js';
+import { applyFixes } from '../wiki/fixes.js';
+import { loadWiki } from '../wiki/pages.js';
+import { trustState } from '../core/trust.js';
+import type { CommandResult, Profile, ReviewSummary } from '../core/types.js';
 
 export const validateHelp = `okfcli validate [--fix] [--strict]
 

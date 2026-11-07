@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { parseFrontmatter } from './frontmatter.js';
+import { parseFrontmatter } from '../core/frontmatter.js';
 import { listDir, wikiDirs } from './pages.js';
-import { humanize, readIfExists, toPosix, writeText, RESERVED } from './util.js';
-import { OKF_VERSION, folderByName } from './profile.js';
-import type { Profile } from './types.js';
+import { humanize, readIfExists, toPosix, writeText, RESERVED } from '../core/util.js';
+import { OKF_VERSION, folderByName } from '../core/profile.js';
+import type { Profile } from '../core/types.js';
 
 const entryLine = (title: string, url: string, description: string): string =>
   `* [${title}](${url})${description ? ` - ${description}` : ''}`;

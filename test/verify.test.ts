@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { withTempDir, okfcli, wikiFile, readWiki, parseJson, type Json } from './helpers.js';
-import { parseFrontmatter } from '../src/frontmatter.js';
+import { parseFrontmatter } from '../src/core/frontmatter.js';
 
 
 // A pattern page whose placeholders are filled in, with a frontmatter comment to check it survives.

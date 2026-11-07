@@ -1,9 +1,9 @@
 import { join } from 'node:path';
-import { findFolderByType, loadProfile, typeAlias } from '../profile.js';
-import { regenerateIndexes } from '../indexer.js';
-import { renderPage } from '../templates.js';
-import { UserError, assertKebabPath, createText, errorCode, humanize } from '../util.js';
-import type { CommandResult } from '../types.js';
+import { findFolderByType, loadProfile, typeAlias } from '../core/profile.js';
+import { regenerateIndexes } from '../wiki/indexer.js';
+import { renderPage } from '../generate/templates.js';
+import { UserError, assertKebabPath, createText, errorCode, humanize } from '../core/util.js';
+import type { CommandResult } from '../core/types.js';
 
 export const newHelp = `okfcli new <type> <name> --description "..." [--title "..."]
 

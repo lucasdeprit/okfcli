@@ -1,8 +1,8 @@
 import { readdirSync, readFileSync, type Dirent } from 'node:fs';
 import { join } from 'node:path';
-import { parseFrontmatter } from './frontmatter.js';
-import { RESERVED } from './util.js';
-import type { Folder, Page } from './types.js';
+import { parseFrontmatter } from '../core/frontmatter.js';
+import { RESERVED } from '../core/util.js';
+import type { Folder, Page } from '../core/types.js';
 
 // The one place that decides what is part of the wiki: hidden entries and
 // node_modules are skipped. Names are sorted by code unit, so output is the

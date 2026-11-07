@@ -1,11 +1,11 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { join, relative, resolve, isAbsolute, sep } from 'node:path';
 import { isMap } from 'yaml';
-import { loadProfile } from '../profile.js';
-import { editFrontmatter, parseFrontmatter } from '../frontmatter.js';
-import { contentHash, countTodos, trustState, validVerifications } from '../trust.js';
-import { UserError, isoNow, toPosix, writeText } from '../util.js';
-import type { CommandResult } from '../types.js';
+import { loadProfile } from '../core/profile.js';
+import { editFrontmatter, parseFrontmatter } from '../core/frontmatter.js';
+import { contentHash, countTodos, trustState, validVerifications } from '../core/trust.js';
+import { UserError, isoNow, toPosix, writeText } from '../core/util.js';
+import type { CommandResult } from '../core/types.js';
 
 const ACTOR = /^(?:(?:human|process):\S+|[^\s/:]+\/\S+)$/;
 

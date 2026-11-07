@@ -1,11 +1,11 @@
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { CORE_FOLDERS, folderByName } from './profile.js';
+import { CORE_FOLDERS, folderByName } from '../core/profile.js';
 import { loadWiki, missingSections, scanBody } from './pages.js';
 import { regenerateIndexes } from './indexer.js';
-import { requiredPages, sectionSkeleton, testingStrategyPage } from './templates.js';
-import { writeText } from './util.js';
-import type { Profile } from './types.js';
+import { requiredPages, sectionSkeleton, testingStrategyPage } from '../generate/templates.js';
+import { writeText } from '../core/util.js';
+import type { Profile } from '../core/types.js';
 
 // Repairs only what can be decided mechanically. Returns a list of what was done.
 export function applyFixes(root: string, profile: Profile): string[] {
