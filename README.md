@@ -1,5 +1,9 @@
 # okfcli
 
+[![npm](https://img.shields.io/npm/v/okfcli)](https://www.npmjs.com/package/okfcli)
+[![CI](https://github.com/lucasdeprit/okfcli/actions/workflows/ci.yml/badge.svg)](https://github.com/lucasdeprit/okfcli/actions/workflows/ci.yml)
+[![license](https://img.shields.io/npm/l/okfcli)](LICENSE)
+
 Create and maintain project wikis in [Open Knowledge Format (OKF)](https://github.com/GoogleCloudPlatform/open-knowledge-format), with the same structure in every project.
 
 ## Commands
@@ -24,7 +28,7 @@ okfcli verify patterns/state-management --by human:ana
 
 ## Install
 
-Needs Node 20 or later.
+Needs Node 22 or later.
 
 ```bash
 npm install -g okfcli          # gives you the `okfcli` command

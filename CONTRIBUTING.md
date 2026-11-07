@@ -13,7 +13,7 @@ npm run typecheck             # type-check without emitting
 node dist/bin/okfcli.js --help
 ```
 
-Requires Node 20 or later. The source is TypeScript in `src/`, `bin/` and `test/`; `dist/` is generated and not committed.
+Requires Node 22 or later. The source is TypeScript in `src/`, `bin/` and `test/`; `dist/` is generated and not committed.
 
 ## Layout
 
