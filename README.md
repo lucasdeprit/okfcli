@@ -24,14 +24,14 @@ okfcli verify patterns/state-management --by human:ana
 
 ## Install
 
-Needs Node 20 or later and read access to this private repo (SSH key or `gh auth login`).
+Needs Node 20 or later.
 
 ```bash
-npm install -g github:lucasdeprit/okfcli     # gives you the `okfcli` command
-npx github:lucasdeprit/okfcli init docs/wiki # or run it without installing
+npm install -g okfcli          # gives you the `okfcli` command
+npx okfcli init docs/wiki      # or run it without installing
 ```
 
-Pin a version by adding a tag or commit: `github:lucasdeprit/okfcli#v0.1.0`. To upgrade, install again, then run `okfcli init` in each project to refresh the generated agent files.
+Pin a version with `npm install -g okfcli@0.1.0`. To upgrade, install again, then run `okfcli init` in each project to refresh the generated agent files.
 
 ## What you get
 
@@ -68,7 +68,7 @@ The skills call `okfcli`, so install it globally on the machines where agents ru
 
 ## Contract
 
-The rules a wiki must follow (folders, page types, required sections, review, checks) are in [SPEC.md](SPEC.md).
+The rules a wiki must follow (folders, page types, required sections, review, checks) are in [SPEC.md](https://github.com/lucasdeprit/okfcli/blob/main/SPEC.md).
 
 ## Development
 
@@ -77,6 +77,10 @@ npm install
 npm test
 node bin/okfcli.js --help   # run from a clone
 ```
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Security issues: [SECURITY.md](SECURITY.md).
 
 ## License
 
