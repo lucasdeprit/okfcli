@@ -117,7 +117,7 @@ export async function run(argv, { cwd = process.cwd(), out = console.log, err = 
     }
     return result.ok === false ? 1 : 0;
   } catch (e) {
-    if (e instanceof UserError || e?.code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION' || e?.code?.startsWith?.('ERR_PARSE_ARGS')) {
+    if (e instanceof UserError || e?.code?.startsWith?.('ERR_PARSE_ARGS')) {
       err(`Error: ${e.message}`);
       return 1;
     }

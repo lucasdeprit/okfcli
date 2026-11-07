@@ -1,10 +1,8 @@
 import { readdirSync, readFileSync, existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseFrontmatter } from './frontmatter.js';
-import { humanize, writeIfChanged, toPosix } from './util.js';
+import { humanize, writeIfChanged, toPosix, RESERVED } from './util.js';
 import { OKF_VERSION } from './profile.js';
-
-const RESERVED = new Set(['index.md', 'log.md']);
 
 const isHidden = (name) => name.startsWith('.');
 

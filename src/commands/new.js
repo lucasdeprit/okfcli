@@ -7,10 +7,9 @@ import { UserError } from '../errors.js';
 
 export const newHelp = `okfcli new <type> <name> --description "..." [--title "..."]
 
-Creates a page with frontmatter and a section skeleton, registers it in the
-index.md of its folder. The name is relative to
-the folder of the type (e.g. "state-management" or "ui/forms"). The type is
-the singular name: overview, architecture, pattern, convention, workflow,
+Creates a page with frontmatter and a section skeleton, and registers it in
+the index.md of its folder. The name is relative to the folder of the type
+(e.g. "state-management" or "ui/forms"). The type is the singular name: overview, architecture, pattern, convention, workflow,
 testing, feature, module, interface, operation, troubleshooting.`;
 
 export function newPage({ root, type, name, title, description }) {
