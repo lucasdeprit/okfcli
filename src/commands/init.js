@@ -41,7 +41,7 @@ function createWiki(root, withFolders, language) {
       throw new UserError(`"${name}" is not an optional folder. Options: ${[...known.keys()].join(', ')}.`);
     }
   }
-  const profileText = `# okfcli profile of this wiki. See SPEC.md.\n${stringify({ profile: PROFILE_ID, language, extra_folders: [] })}`;
+  const profileText = `# okfcli profile of this wiki. See https://github.com/lucasdeprit/okfcli/blob/main/SPEC.md\n${stringify({ profile: PROFILE_ID, language, extra_folders: [] })}`;
   writeText(join(root, PROFILE_FILE), profileText);
 
   const created = [PROFILE_FILE];

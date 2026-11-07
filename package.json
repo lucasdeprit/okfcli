@@ -2,20 +2,47 @@
   "name": "okfcli",
   "version": "0.1.0",
   "description": "Scaffolding and management of project wikis in Open Knowledge Format (OKF)",
+  "keywords": [
+    "okf",
+    "open-knowledge-format",
+    "wiki",
+    "documentation",
+    "cli",
+    "knowledge-base",
+    "ai-agents",
+    "copilot",
+    "markdown",
+    "sdd"
+  ],
+  "author": "Lucas Deprit",
   "license": "MIT",
+  "homepage": "https://github.com/lucasdeprit/okfcli#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lucasdeprit/okfcli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/lucasdeprit/okfcli/issues"
+  },
   "type": "module",
   "bin": {
     "okfcli": "bin/okfcli.js"
   },
   "files": [
     "bin",
-    "src"
+    "src",
+    "SPEC.md"
   ],
   "scripts": {
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "pack:check": "npm pack --dry-run"
   },
   "engines": {
     "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "dependencies": {
     "yaml": "^2.9.1"

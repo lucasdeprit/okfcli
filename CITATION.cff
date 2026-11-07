@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: If you use okfcli or its wiki profile, please cite it as below.
+title: okfcli
+type: software
+authors:
+  - family-names: Deprit
+    given-names: Lucas
+version: 0.1.0
+license: MIT
+repository-code: https://github.com/lucasdeprit/okfcli

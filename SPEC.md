@@ -114,7 +114,7 @@ Every page is born **unreviewed**. A page counts as reviewed when it has a valid
 - **Who decides.** A person, not the tool. A person verifies either by running `okfcli verify <path> --by human:<id>` or by writing the entry by hand in the page frontmatter. Agents may help (the review skill walks the person through the unreviewed pages), but they only run `okfcli verify --by human:<id>` after the person has confirmed.
 - **Tiers** (from OKF): no entry = *unverified*; only machine actors = *machine-confirmed*; any `human:<id>` = *human-reviewed*.
 - **Outdated.** `okfcli verify` stores a `hash` of the content that was read (frontmatter except `verified` and `status`, plus body). If the page is edited afterwards the hash no longer matches and the verification is reported as *outdated* until it is verified again. Entries without a hash (written by hand) are always accepted and never go outdated.
-- **Nagging.** `validate` warns about unreviewed and outdated pages, and `status` lists them, so a team can see what nobody has read yet. Projects that want to enforce review can raise `frontmatter.verified` and `frontmatter.verified-outdated` to `error` in their profile. Deprecated pages are not asked to be reviewed.
+- **Nagging.** `validate` warns about unreviewed and outdated pages, so a team can see what nobody has read yet. Projects that want to enforce review can raise `frontmatter.verified` and `frontmatter.verified-outdated` to `error` in their profile. Deprecated pages are not asked to be reviewed.
 - **Deprecating.** `status: deprecated` is only ever set by a person or an agent editing the page; the tool never deprecates anything by itself.
 
 Actor convention (OKF): `human:<id>`, `process:<id>` or `<tool>/<version>`.
@@ -208,7 +208,7 @@ First target: **GitHub Copilot in VS Code**. Paths verified in the VS Code docum
 | Pointer to the wiki | Marked block inside `AGENTS.md` (or `.github/copilot-instructions.md` if the project already uses it) | So the agent always knows the wiki exists and consults it before touching code |
 | Consult skill | `.github/skills/okf-consult-wiki/SKILL.md` | Read `index.md` and drill into the relevant pages |
 | Update skill | `.github/skills/okf-update-wiki/SKILL.md` | Edit pages in place, create new ones with `okfcli new`, then `okfcli validate --fix` and fix what it reports (so there is no separate validation skill) |
-| Review skill | `.github/skills/okf-review-wiki/SKILL.md` | List unreviewed pages with `status`, walk the person through them one by one, and run `verify --by human:<id>` only after the person confirms |
+| Review skill | `.github/skills/okf-review-wiki/SKILL.md` | List unreviewed pages with `validate --json`, walk the person through them one by one, and run `verify --by human:<id>` only after the person confirms |
 
 Notes on Copilot:
 
