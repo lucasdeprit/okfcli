@@ -135,3 +135,18 @@ test('new does not overwrite an existing page', async () => {
     cleanup();
   }
 });
+
+test('a symlinked .md is neither a page nor listed in the index (one walk decides both)', async () => {
+  const { dir, cleanup } = tempDir();
+  try {
+    await okfcli(dir, 'init');
+    writeFileSync(join(dir, 'outside.md'), '---\ntype: Pattern\ntitle: Linked\ndescription: d\n---\n');
+    symlinkSync(join(dir, 'outside.md'), join(dir, 'wiki', 'patterns', 'linked.md'));
+    const r = await okfcli(dir, 'validate', '--fix', '--json');
+    const data = parseJson(r.out);
+    assert.ok(!data.issues.some((i: { file: string }) => i.file === 'patterns/linked.md'));
+    assert.ok(!readFileSync(join(dir, 'wiki', 'patterns', 'index.md'), 'utf8').includes('linked'));
+  } finally {
+    cleanup();
+  }
+});

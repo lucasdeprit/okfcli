@@ -1,24 +1,10 @@
-import { readdirSync, readFileSync, existsSync, statSync } from 'node:fs';
+import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseFrontmatter } from './frontmatter.js';
+import { listDir, wikiDirs } from './pages.js';
 import { humanize, writeIfChanged, toPosix, RESERVED } from './util.js';
 import { OKF_VERSION } from './profile.js';
 import type { Profile } from './types.js';
-
-const isHidden = (name: string): boolean => name.startsWith('.');
-
-function listDir(absDir: string): { pages: string[]; dirs: string[] } {
-  const entries = readdirSync(absDir, { withFileTypes: true }).filter((e) => !isHidden(e.name));
-  const pages = entries
-    .filter((e) => e.isFile() && e.name.endsWith('.md') && !RESERVED.has(e.name))
-    .map((e) => e.name)
-    .sort();
-  const dirs = entries
-    .filter((e) => e.isDirectory() && e.name !== 'node_modules')
-    .map((e) => e.name)
-    .sort();
-  return { pages, dirs };
-}
 
 const entryLine = (title: string, url: string, description: string): string =>
   `* [${title}](${url})${description ? ` - ${description}` : ''}`;
@@ -28,7 +14,8 @@ const oneLine = (s: unknown): string => String(s ?? '').replace(/\s+/g, ' ').tri
 
 export function renderIndex(root: string, relDir: string, profile: Profile): string {
   const absDir = join(root, relDir);
-  const { pages, dirs } = listDir(absDir);
+  const { md, dirs } = listDir(absDir);
+  const pages = md.filter((name) => !RESERVED.has(name));
   const folderMeta = (name: string) => (relDir === '' ? profile.folders.find((f) => f.name === name) : undefined);
   const prefix = relDir === '' ? '' : `/${relDir}`;
   const ownMeta = relDir === '' ? undefined : profile.folders.find((f) => f.name === relDir);
@@ -53,25 +40,10 @@ export function renderIndex(root: string, relDir: string, profile: Profile): str
   return relDir === '' ? `---\nokf_version: "${OKF_VERSION}"\n---\n${body}` : body;
 }
 
-// Directories (relative, "" = root) that must have an index.md.
-export function indexedDirs(root: string): string[] {
-  const result = [''];
-  const walk = (rel: string): void => {
-    const { dirs } = listDir(join(root, rel));
-    for (const d of dirs) {
-      const child = rel ? `${rel}/${d}` : d;
-      result.push(child);
-      walk(child);
-    }
-  };
-  walk('');
-  return result;
-}
-
 // Regenerates every index.md. With check=true it writes nothing and only reports.
 export function regenerateIndexes(root: string, profile: Profile, { check = false }: { check?: boolean } = {}): string[] {
   const changed: string[] = [];
-  for (const rel of indexedDirs(root)) {
+  for (const rel of ['', ...wikiDirs(root)]) {
     const file = join(root, rel, 'index.md');
     const text = renderIndex(root, rel, profile);
     const current = existsSync(file) && statSync(file).isFile() ? readFileSync(file, 'utf8') : null;

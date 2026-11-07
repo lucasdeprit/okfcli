@@ -1,34 +1,51 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, type Dirent } from 'node:fs';
 import { join } from 'node:path';
 import { parseFrontmatter } from './frontmatter.js';
 import { RESERVED } from './util.js';
 import type { Page } from './types.js';
 
-// Walks the wiki and loads every markdown file. Hidden folders are skipped.
-export function loadWiki(root: string): { concepts: Page[]; indexes: { rel: string; text: string }[]; dirs: string[] } {
-  const concepts: Page[] = [];
-  const indexes: { rel: string; text: string }[] = [];
-  const dirs: string[] = [];
+// The one place that decides what is part of the wiki: hidden entries and
+// node_modules are skipped. Names are sorted by code unit, so output is the
+// same on every machine. `md` holds regular .md files (reserved ones included).
+export function listDir(absDir: string): { md: string[]; dirs: string[] } {
+  const entries = readdirSync(absDir, { withFileTypes: true }).filter((e) => !e.name.startsWith('.') && e.name !== 'node_modules');
+  const names = (keep: (e: Dirent) => boolean): string[] => entries.filter(keep).map((e) => e.name).sort();
+  return {
+    md: names((e) => e.isFile() && e.name.endsWith('.md')),
+    dirs: names((e) => e.isDirectory()),
+  };
+}
+
+// Every directory of the wiki, relative to the root, parents before children.
+export function wikiDirs(root: string): string[] {
+  const result: string[] = [];
   const walk = (rel: string): void => {
-    const entries = readdirSync(join(root, rel), { withFileTypes: true })
-      .filter((e) => !e.name.startsWith('.') && e.name !== 'node_modules')
-      .sort((a, b) => a.name.localeCompare(b.name));
-    for (const e of entries) {
-      const childRel = rel ? `${rel}/${e.name}` : e.name;
-      if (e.isDirectory()) {
-        dirs.push(childRel);
-        walk(childRel);
-      } else if (e.name.endsWith('.md')) {
-        const text = readFileSync(join(root, childRel), 'utf8');
-        if (e.name === 'index.md') indexes.push({ rel: childRel, text });
-        else if (!RESERVED.has(e.name)) {
-          const { data, body } = parseFrontmatter(text);
-          concepts.push({ rel: childRel, text, data, body, folder: childRel.includes('/') ? (childRel.split('/')[0] ?? null) : null });
-        }
-      }
+    for (const d of listDir(join(root, rel)).dirs) {
+      const child = rel ? `${rel}/${d}` : d;
+      result.push(child);
+      walk(child);
     }
   };
   walk('');
+  return result;
+}
+
+// Loads every markdown file of the wiki.
+export function loadWiki(root: string): { concepts: Page[]; indexes: { rel: string; text: string }[]; dirs: string[] } {
+  const concepts: Page[] = [];
+  const indexes: { rel: string; text: string }[] = [];
+  const dirs = wikiDirs(root);
+  for (const dir of ['', ...dirs]) {
+    for (const name of listDir(join(root, dir)).md) {
+      const rel = dir ? `${dir}/${name}` : name;
+      const text = readFileSync(join(root, rel), 'utf8');
+      if (name === 'index.md') indexes.push({ rel, text });
+      else if (!RESERVED.has(name)) {
+        const { data, body } = parseFrontmatter(text);
+        concepts.push({ rel, text, data, body, folder: dir ? (dir.split('/')[0] ?? null) : null });
+      }
+    }
+  }
   return { concepts, indexes, dirs };
 }
 
