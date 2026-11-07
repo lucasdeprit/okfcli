@@ -2,9 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { tempDir, okfcli } from './helpers.js';
+import { tempDir, okfcli, parseJson, type Json } from './helpers.js';
 
-const read = (dir, rel) => readFileSync(join(dir, 'wiki', rel), 'utf8');
+const read = (dir: string, rel: string) => readFileSync(join(dir, 'wiki', rel), 'utf8');
 
 test('init creates the core, indexes and required pages', async () => {
   const { dir, cleanup } = tempDir();
@@ -69,7 +69,7 @@ test('new creates the page with a skeleton and indexes it', async () => {
     assert.equal(r.code, 0, r.err);
     const page = read(dir, 'patterns/state-management.md');
     assert.match(page, /^---\ntype: Pattern\ntitle: State management\ndescription: Screen state\.\n/);
-    assert.ok(!/generated|status|verified/.test(page.split('\n---\n')[0]), 'new pages start with no trust fields');
+    assert.ok(!/generated|status|verified/.test(page.split('\n---\n')[0] ?? ''), 'new pages start with no trust fields');
     for (const s of ['When to use', 'How', 'Example', 'Why']) assert.match(page, new RegExp(`# ${s}\\n`));
     assert.match(read(dir, 'patterns/index.md'), /\[State management\]\(\/patterns\/state-management\.md\) - Screen state\./);
     assert.ok(!existsSync(join(dir, 'wiki/log.md')));
@@ -115,7 +115,7 @@ test('new --json returns structured data', async () => {
   try {
     await okfcli(dir, 'init');
     const r = await okfcli(dir, 'new', 'convention', 'naming', '--description', 'Naming.', '--json');
-    const data = JSON.parse(r.out);
+    const data = parseJson(r.out);
     assert.equal(data.path, 'conventions/naming.md');
     assert.deepEqual(data.sections, ['# Rule', '# Examples']);
   } finally {
@@ -127,15 +127,15 @@ test('validate flags out-of-date indexes and --fix regenerates them', async () =
   const { dir, cleanup } = tempDir();
   try {
     await okfcli(dir, 'init');
-    const rules = async (...a) => JSON.parse((await okfcli(dir, 'validate', '--json', ...a)).out).issues.map((i) => `${i.rule}:${i.file}`);
-    assert.ok(!(await rules()).some((r) => r.startsWith('index.out-of-date')));
+    const rules = async (...a: string[]) => parseJson((await okfcli(dir, 'validate', '--json', ...a)).out).issues.map((i: Json) => `${i.rule}:${i.file}`);
+    assert.ok(!(await rules()).some((r: string) => r.startsWith('index.out-of-date')));
     writeFileSync(
       join(dir, 'wiki/conventions/naming.md'),
       '---\ntype: Convention\ntitle: Naming\ndescription: Naming.\n---\n# Rule\n\n# Examples\n',
     );
     assert.ok((await rules()).includes('index.out-of-date:conventions/index.md'));
     await okfcli(dir, 'validate', '--fix');
-    assert.ok(!(await rules()).some((r) => r.startsWith('index.out-of-date')));
+    assert.ok(!(await rules()).some((r: string) => r.startsWith('index.out-of-date')));
     assert.match(read(dir, 'conventions/index.md'), /\[Naming\]\(\/conventions\/naming\.md\) - Naming\./);
   } finally {
     cleanup();

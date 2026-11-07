@@ -5,10 +5,11 @@ import { loadWiki, scanBody } from './pages.js';
 import { regenerateIndexes } from './indexer.js';
 import { requiredPages, testingStrategyPage } from './templates.js';
 import { writeText } from './util.js';
+import type { Profile } from './types.js';
 
 // Repairs only what can be decided mechanically. Returns a list of what was done.
-export function applyFixes(root, profile) {
-  const done = [];
+export function applyFixes(root: string, profile: Profile): string[] {
+  const done: string[] = [];
 
   for (const folder of CORE_FOLDERS) {
     if (!existsSync(join(root, folder.name))) {

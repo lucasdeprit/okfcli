@@ -4,10 +4,10 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, symlinkSync } from 
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { tempDir, okfcli } from './helpers.js';
+import { tempDir, okfcli, parseJson } from './helpers.js';
 
 const BIN = fileURLToPath(new URL('../bin/okfcli.js', import.meta.url));
-const profileFile = (dir) => join(dir, 'wiki', '.okf-profile.yaml');
+const profileFile = (dir: string) => join(dir, 'wiki', '.okf-profile.yaml');
 
 test('the real binary reports its version and exits 0', () => {
   const r = spawnSync(process.execPath, [BIN, '--version'], { encoding: 'utf8' });
@@ -38,7 +38,7 @@ test('profile: invalid shapes give a clear error, not a stack trace', async () =
   const { dir, cleanup } = tempDir();
   try {
     await okfcli(dir, 'init');
-    for (const [yaml, re] of [
+    for (const [yaml, re] of <[string, RegExp][]>[
       ['extra_folders: nope\n', /must be a list/],
       ['severity: { page.todo: eror }\n', /severity of "page.todo"/],
       ['severity: [a]\n', /"severity" must be a mapping/],
@@ -117,7 +117,7 @@ test('validate does not flag indexes checked out with CRLF line endings', async 
     const file = join(dir, 'wiki', 'index.md');
     writeFileSync(file, readFileSync(file, 'utf8').replace(/\n/g, '\r\n'));
     const r = await okfcli(dir, 'validate', '--json');
-    assert.ok(!JSON.parse(r.out).issues.some((i) => i.rule === 'index.out-of-date'));
+    assert.ok(!parseJson(r.out).issues.some((i: { rule: string }) => i.rule === 'index.out-of-date'));
   } finally {
     cleanup();
   }

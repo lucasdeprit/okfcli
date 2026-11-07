@@ -7,6 +7,10 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Changed
+- Rewritten in TypeScript (strict). The package now ships compiled JavaScript with type declarations from `dist/`.
+- Added a small programmatic API (`run`, `loadProfile`, `validateWiki`, `parseFrontmatter`, `contentHash`, `trustState`).
+- Internal cleanup: `errors` and `review` modules merged into their only users, unused helpers removed.
+
 - Renamed the CLI, package and generated markers from `okw` to `okfcli`
   (`OKW_ACTOR` is now `OKFCLI_ACTOR`; the pointer block markers are
   `<!-- okfcli:start/end -->`).

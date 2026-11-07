@@ -2,22 +2,22 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, rmSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { tempDir, okfcli } from './helpers.js';
+import { tempDir, okfcli, parseJson, type Json } from './helpers.js';
 
-const W = (dir, rel) => join(dir, 'wiki', rel);
-const read = (dir, rel) => readFileSync(W(dir, rel), 'utf8');
+const W = (dir: string, rel: string) => join(dir, 'wiki', rel);
+const read = (dir: string, rel: string) => readFileSync(W(dir, rel), 'utf8');
 
-async function issues(dir, ...extra) {
+async function issues(dir: string, ...extra: string[]): Promise<Json> {
   const r = await okfcli(dir, 'validate', '--json', ...extra);
-  return { ...JSON.parse(r.out), code: r.code };
+  return { ...parseJson(r.out), code: r.code };
 }
-const rules = (res) => res.issues.map((i) => `${i.rule}:${i.file}`);
+const rules = (res: Json): string[] => res.issues.map((i: Json) => `${i.rule}:${i.file}`);
 
 // A page with every section filled in and verified, so it raises no issues.
-const goodPage = (type, sections, extra = '') =>
+const goodPage = (type: string, sections: string[], extra = ''): string =>
   `---\ntype: ${type}\ntitle: Good\ndescription: A good page.\nverified:\n  - { by: human:me, at: 2026-10-19T09:00:00Z }\n---\n\n${sections.map((s) => `# ${s}\n\nContent.\n`).join('\n')}${extra}`;
 
-async function cleanWiki(dir) {
+async function cleanWiki(dir: string): Promise<void> {
   await okfcli(dir, 'init');
   writeFileSync(W(dir, 'testing/strategy.md'), goodPage('Testing', ['Scope', 'How to run', 'Rules'], '\nSee [project](/overview/project.md).\n'));
   writeFileSync(W(dir, 'overview/project.md'), goodPage('Overview', ['Purpose', 'Scope'], '\nTesting: [strategy](/testing/strategy.md).\n'));
@@ -89,7 +89,7 @@ test('reports type, sections, frontmatter, names and status errors with a fix hi
     ]) {
       assert.ok(r.includes(expected), `missing ${expected} in ${r.join(', ')}`);
     }
-    assert.ok(res.issues.every((i) => i.fix && i.message));
+    assert.ok(res.issues.every((i: Json) => i.fix && i.message));
   } finally {
     cleanup();
   }
@@ -109,7 +109,7 @@ test('detects broken links and unknown folders', async () => {
     const r = rules(await issues(dir));
     assert.ok(r.includes('link.broken:conventions/naming.md'));
     assert.ok(r.includes('structure.unknown-folder:misc/note.md'));
-    assert.equal(r.filter((x) => x.startsWith('link.broken')).length, 1, 'external links are ignored');
+    assert.equal(r.filter((x: string) => x.startsWith('link.broken')).length, 1, 'external links are ignored');
   } finally {
     cleanup();
   }
@@ -137,8 +137,8 @@ test('severity can be overridden or switched off in the profile', async () => {
     const file = W(dir, '.okf-profile.yaml');
     writeFileSync(file, `${readFileSync(file, 'utf8')}severity:\n  page.todo: error\n  page.orphan: off\n  frontmatter.verified: off\n`);
     const res = await issues(dir);
-    assert.ok(res.issues.some((i) => i.rule === 'page.todo' && i.severity === 'error'));
-    assert.ok(!res.issues.some((i) => i.rule === 'page.orphan' || i.rule === 'frontmatter.verified'));
+    assert.ok(res.issues.some((i: Json) => i.rule === 'page.todo' && i.severity === 'error'));
+    assert.ok(!res.issues.some((i: Json) => i.rule === 'page.orphan' || i.rule === 'frontmatter.verified'));
     assert.equal(res.ok, false);
   } finally {
     cleanup();
@@ -154,15 +154,15 @@ test('--fix repairs folders, required pages, sections and indexes, and reports w
     rmSync(W(dir, 'testing/strategy.md'));
     writeFileSync(W(dir, 'patterns/short.md'), '---\ntype: Pattern\ntitle: Short\ndescription: Short one.\n---\n# How\n\nDone.\n');
     const res = await issues(dir, '--fix');
-    assert.ok(res.fixed.some((f) => f.includes('Created folder conventions/')));
-    assert.ok(res.fixed.some((f) => f.includes('Recreated workflows/update-wiki.md')));
-    assert.ok(res.fixed.some((f) => f.includes('Created testing/strategy.md')));
-    assert.ok(res.fixed.some((f) => f.includes('patterns/short.md')));
+    assert.ok(res.fixed.some((f: string) => f.includes('Created folder conventions/')));
+    assert.ok(res.fixed.some((f: string) => f.includes('Recreated workflows/update-wiki.md')));
+    assert.ok(res.fixed.some((f: string) => f.includes('Created testing/strategy.md')));
+    assert.ok(res.fixed.some((f: string) => f.includes('patterns/short.md')));
     assert.match(read(dir, 'patterns/short.md'), /# When to use\n\n<!-- TODO: When to use -->/);
     const r = rules(res);
-    assert.ok(!r.some((x) => x.startsWith('structure.core-folder')));
-    assert.ok(!r.some((x) => x.startsWith('page.sections')));
-    assert.ok(!r.some((x) => x.startsWith('index.out-of-date')));
+    assert.ok(!r.some((x: string) => x.startsWith('structure.core-folder')));
+    assert.ok(!r.some((x: string) => x.startsWith('page.sections')));
+    assert.ok(!r.some((x: string) => x.startsWith('index.out-of-date')));
     assert.ok(r.includes('page.todo:patterns/short.md'), 'content problems remain for the agent');
     assert.equal(res.errors, 0);
   } finally {

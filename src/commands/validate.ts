@@ -1,7 +1,9 @@
 import { loadProfile } from '../profile.js';
 import { validateWiki } from '../validate.js';
 import { applyFixes } from '../fixes.js';
-import { reviewSummary } from '../review.js';
+import { loadWiki } from '../pages.js';
+import { trustState } from '../trust.js';
+import type { CommandResult, Profile, ReviewSummary } from '../types.js';
 
 export const validateHelp = `okfcli validate [--fix] [--strict]
 
@@ -15,7 +17,25 @@ any error (with --strict, any warning too).
   --json    print { ok, errors, warnings, fixed, review, issues }, each issue as
             { rule, severity, file, message, fix }`;
 
-export function validateCommand({ root, fix = false, strict = false }) {
+// How many pages are at each trust tier. Deprecated pages are not asked to be
+// reviewed, so they are counted apart.
+function reviewSummary(root: string, profile: Profile): ReviewSummary {
+  const known = new Set(profile.folders.map((f) => f.name));
+  const pages = loadWiki(root).concepts.filter((c) => c.data && c.folder && known.has(c.folder));
+  const active = pages.filter((p) => p.data?.status !== 'deprecated');
+  const states = active.map((p) => trustState(p.data, p.body));
+  const count = (pred: (s: (typeof states)[number]) => boolean): number => states.filter(pred).length;
+  return {
+    pages: pages.length,
+    deprecated: pages.length - active.length,
+    'human-reviewed': count((s) => s.tier === 'human-reviewed'),
+    'machine-confirmed': count((s) => s.tier === 'machine-confirmed'),
+    unverified: count((s) => s.tier === 'unverified' && !s.outdated),
+    outdated: count((s) => s.outdated),
+  };
+}
+
+export function validateCommand({ root, fix = false, strict = false }: { root: string; fix?: boolean | undefined; strict?: boolean | undefined }): CommandResult {
   const profile = loadProfile(root);
   const fixed = fix ? applyFixes(root, profile) : [];
   const issues = validateWiki(root, profile);
@@ -24,7 +44,7 @@ export function validateCommand({ root, fix = false, strict = false }) {
   const ok = errors === 0 && !(strict && warnings > 0);
   const review = reviewSummary(root, profile);
 
-  const lines = [];
+  const lines: (string | null)[] = [];
   if (fixed.length) lines.push('Fixed:', ...fixed.map((f) => `  ${f}`), '');
   for (const i of issues) {
     lines.push(`${i.severity.padEnd(7)} ${i.rule}  ${i.file}`, `        ${i.message} ${i.fix}`);

@@ -74,8 +74,8 @@ The rules a wiki must follow (folders, page types, required sections, review, ch
 
 ```bash
 npm install
-npm test
-node bin/okfcli.js --help   # run from a clone
+npm test                          # builds to dist/ and runs the tests
+node dist/bin/okfcli.js --help    # run from a clone
 ```
 
 ## Contributing

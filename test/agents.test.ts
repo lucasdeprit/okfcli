@@ -2,9 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { tempDir, okfcli } from './helpers.js';
+import { tempDir, okfcli, parseJson, type Json } from './helpers.js';
 
-const read = (dir, rel) => readFileSync(join(dir, rel), 'utf8');
+const read = (dir: string, rel: string) => readFileSync(join(dir, rel), 'utf8');
 const SKILLS = ['okf-consult-wiki', 'okf-update-wiki', 'okf-review-wiki'];
 
 test('init generates the pointer block and the three Copilot skills', async () => {
@@ -50,7 +50,7 @@ test('the pointer block is appended to an existing AGENTS.md without touching th
     await okfcli(dir, 'init');
     const agents = read(dir, 'AGENTS.md');
     assert.ok(agents.startsWith('# Rules\n\nBe nice.\n\n<!-- okfcli:start -->'));
-    assert.equal(agents.match(/okfcli:start/g).length, 1);
+    assert.equal(agents.match(/okfcli:start/g)?.length, 1);
   } finally {
     cleanup();
   }
@@ -65,8 +65,8 @@ test('running init again refreshes the block in place and reports unchanged file
     writeFileSync(file, read(dir, 'AGENTS.md').replace('Project wiki', 'OLD TEXT').replace('\n', '\nBefore\n') + '\nAfter\n');
     writeFileSync(join(dir, '.github/skills/okf-update-wiki/SKILL.md'), 'stale\n');
     const again = await okfcli(dir, 'init', '--json');
-    const data = JSON.parse(again.out);
-    const status = Object.fromEntries(data.agent_files.map((f) => [f.path, f.status]));
+    const data = parseJson(again.out);
+    const status = Object.fromEntries(data.agent_files.map((f: Json) => [f.path, f.status]));
     assert.equal(status['AGENTS.md'], 'updated');
     assert.equal(status['.github/skills/okf-update-wiki/SKILL.md'], 'updated');
     assert.equal(status['.github/skills/okf-consult-wiki/SKILL.md'], 'unchanged');
@@ -74,9 +74,9 @@ test('running init again refreshes the block in place and reports unchanged file
     assert.ok(!agents.includes('OLD TEXT'));
     assert.match(agents, /Before/);
     assert.match(agents, /After/);
-    assert.equal(agents.match(/okfcli:start/g).length, 1);
-    const third = JSON.parse((await okfcli(dir, 'init', '--json')).out);
-    assert.ok(third.agent_files.every((f) => f.status === 'unchanged' || f.path === 'AGENTS.md'));
+    assert.equal(agents.match(/okfcli:start/g)?.length, 1);
+    const third = parseJson((await okfcli(dir, 'init', '--json')).out);
+    assert.ok(third.agent_files.every((f: Json) => f.status === 'unchanged' || f.path === 'AGENTS.md'));
   } finally {
     cleanup();
   }

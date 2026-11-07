@@ -1,33 +1,27 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { parse } from 'yaml';
-import { UserError } from './errors.js';
-import { KEBAB } from './util.js';
+import { KEBAB, UserError } from './util.js';
+import type { Folder, Profile, Severity } from './types.js';
 
 export const PROFILE_ID = 'base@0.1';
 export const PROFILE_FILE = '.okf-profile.yaml';
 export const OKF_VERSION = '0.2';
-const SEVERITIES = ['error', 'warning', 'off'];
+const SEVERITIES: Severity[] = ['error', 'warning', 'off'];
 
 // Base profile folders. Names and `type` are fixed; see SPEC.md section 3.
-const core = (name, type, title, description, sections) => ({
+const folder = (core: boolean, name: string, type: string, title: string, description: string, sections: string[]): Folder => ({
   name,
   type,
   title,
   description,
   sections,
-  core: true,
+  core,
 });
-const optional = (name, type, title, description, sections) => ({
-  name,
-  type,
-  title,
-  description,
-  sections,
-  core: false,
-});
+const core = (...args: [string, string, string, string, string[]]): Folder => folder(true, ...args);
+const optional = (...args: [string, string, string, string, string[]]): Folder => folder(false, ...args);
 
-export const CORE_FOLDERS = [
+export const CORE_FOLDERS: Folder[] = [
   core('overview', 'Overview', 'Overview', 'What the project is, its scope and its glossary.', ['Purpose', 'Scope']),
   core('architecture', 'Architecture', 'Architecture', 'Structure, layers and dependency rules.', ['Overview', 'Rules', 'Why']),
   core('patterns', 'Pattern', 'Patterns', 'How each thing is implemented, with a real example.', ['When to use', 'How', 'Example', 'Why']),
@@ -36,7 +30,7 @@ export const CORE_FOLDERS = [
   core('testing', 'Testing', 'Testing', 'Testing strategy, how to run it and rules.', ['Scope', 'How to run', 'Rules']),
 ];
 
-export const OPTIONAL_FOLDERS = [
+export const OPTIONAL_FOLDERS: Folder[] = [
   optional('features', 'Feature', 'Features', 'Business capabilities and flows.', ['Summary', 'Behavior']),
   optional('modules', 'Module', 'Modules', 'Internal packages and components.', ['Responsibility', 'Public API']),
   optional('interfaces', 'Interface', 'Interfaces', 'External contracts: APIs, events, integrations.', ['Contract', 'Consumers']),
@@ -45,51 +39,63 @@ export const OPTIONAL_FOLDERS = [
 ];
 
 // Command-line alias for a type: "Pattern" -> "pattern".
-export const typeAlias = (type) => type.toLowerCase().replace(/\s+/g, '-');
+export const typeAlias = (type: string): string => type.toLowerCase().replace(/\s+/g, '-');
 
-export function loadProfile(wikiRoot) {
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+
+export function loadProfile(wikiRoot: string): Profile {
   const file = join(wikiRoot, PROFILE_FILE);
   if (!existsSync(file)) {
     throw new UserError(`${PROFILE_FILE} not found in ${wikiRoot}. Is this an okfcli wiki? Run "okfcli init".`);
   }
-  let config;
+  let config: unknown;
   try {
     config = parse(readFileSync(file, 'utf8')) ?? {};
   } catch (err) {
-    throw new UserError(`${PROFILE_FILE} is not valid YAML: ${err.message}`);
+    throw new UserError(`${PROFILE_FILE} is not valid YAML: ${err instanceof Error ? err.message : String(err)}`);
   }
-  if (typeof config !== 'object' || Array.isArray(config)) {
+  if (!isRecord(config)) {
     throw new UserError(`${PROFILE_FILE} must be a YAML mapping.`);
   }
   if (config.extra_folders != null && !Array.isArray(config.extra_folders)) {
     throw new UserError(`${PROFILE_FILE}: "extra_folders" must be a list.`);
   }
   const severity = config.severity ?? {};
-  if (typeof severity !== 'object' || Array.isArray(severity)) {
+  if (!isRecord(severity)) {
     throw new UserError(`${PROFILE_FILE}: "severity" must be a mapping of rule to ${SEVERITIES.join(', ')}.`);
   }
   for (const [rule, level] of Object.entries(severity)) {
-    if (!SEVERITIES.includes(level)) {
-      throw new UserError(`${PROFILE_FILE}: severity of "${rule}" is "${level}"; use ${SEVERITIES.join(', ')}.`);
+    if (!SEVERITIES.includes(level as Severity)) {
+      throw new UserError(`${PROFILE_FILE}: severity of "${rule}" is "${String(level)}"; use ${SEVERITIES.join(', ')}.`);
     }
   }
-  const extra = (config.extra_folders ?? []).map((f) => {
-    if (!f?.name || !f?.type) {
+  const extra = ((config.extra_folders ?? []) as unknown[]).map((entry): Folder => {
+    const f = isRecord(entry) ? entry : {};
+    if (!f.name || !f.type) {
       throw new UserError(`${PROFILE_FILE}: every extra_folders entry needs "name" and "type".`);
     }
     if (typeof f.name !== 'string' || !KEBAB.test(f.name)) {
-      throw new UserError(`${PROFILE_FILE}: extra_folders name "${f.name}" must be kebab-case (lowercase letters, digits and hyphens).`);
+      throw new UserError(`${PROFILE_FILE}: extra_folders name "${String(f.name)}" must be kebab-case (lowercase letters, digits and hyphens).`);
     }
-    const sections = (f.sections ?? []).map((s) => String(s).replace(/^#+\s*/, ''));
-    return { name: f.name, type: f.type, title: f.title ?? f.type, description: f.description ?? '', sections, core: false, extra: true };
+    const type = String(f.type);
+    const sections = (Array.isArray(f.sections) ? f.sections : []).map((s) => String(s).replace(/^#+\s*/, ''));
+    return {
+      name: f.name,
+      type,
+      title: f.title ? String(f.title) : type,
+      description: f.description ? String(f.description) : '',
+      sections,
+      core: false,
+      extra: true,
+    };
   });
   return {
     config,
-    severity,
+    severity: severity as Record<string, Severity>,
     folders: [...CORE_FOLDERS, ...OPTIONAL_FOLDERS, ...extra],
   };
 }
 
-export function findFolderByType(profile, alias) {
+export function findFolderByType(profile: Profile, alias: string): Folder | undefined {
   return profile.folders.find((f) => typeAlias(f.type) === alias.toLowerCase());
 }

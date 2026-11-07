@@ -1,9 +1,15 @@
 import { yamlScalar } from './util.js';
 import { CORE_FOLDERS } from './profile.js';
+import type { Folder } from './types.js';
 
-const TODO = (section) => `<!-- TODO: ${section} -->`;
+export interface TemplatePage {
+  path: string;
+  text: string;
+}
 
-export function renderPage({ folder, title, description }) {
+const TODO = (section: string): string => `<!-- TODO: ${section} -->`;
+
+export function renderPage({ folder, title, description }: { folder: Pick<Folder, 'type' | 'sections'>; title: string; description: string }): string {
   const front = ['---', `type: ${yamlScalar(folder.type)}`, `title: ${yamlScalar(title)}`, `description: ${yamlScalar(description)}`, '---'];
   const sections = folder.sections.map((s) => `# ${s}\n\n${TODO(s)}\n`);
   return `${front.join('\n')}\n\n${sections.join('\n')}`;
@@ -11,8 +17,8 @@ export function renderPage({ folder, title, description }) {
 
 // Scaffold of the testing strategy page. `init` and `validate --fix` create it
 // when testing/ has no page; it is not a required name, any testing page counts.
-export function testingStrategyPage() {
-  const folder = CORE_FOLDERS.find((f) => f.name === 'testing');
+export function testingStrategyPage(): TemplatePage {
+  const folder = CORE_FOLDERS.find((f) => f.name === 'testing') as Folder;
   return {
     path: 'testing/strategy.md',
     text: renderPage({ folder, title: 'Testing strategy', description: 'How testing is done in this project.' }),
@@ -20,7 +26,7 @@ export function testingStrategyPage() {
 }
 
 // Required core pages (SPEC.md section 3). Created by `init`.
-export function requiredPages() {
+export function requiredPages(): TemplatePage[] {
   return [
     {
       path: 'overview/project.md',

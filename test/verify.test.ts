@@ -2,25 +2,25 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { tempDir, okfcli } from './helpers.js';
+import { tempDir, okfcli, parseJson, type Json } from './helpers.js';
 import { parseFrontmatter } from '../src/frontmatter.js';
 
-const W = (dir, rel) => join(dir, 'wiki', rel);
-const read = (dir, rel) => readFileSync(W(dir, rel), 'utf8');
+const W = (dir: string, rel: string) => join(dir, 'wiki', rel);
+const read = (dir: string, rel: string) => readFileSync(W(dir, rel), 'utf8');
 
 // A pattern page whose placeholders are filled in, with a frontmatter comment to check it survives.
 const filled = (extraFront = '') =>
   `---\n# keep this comment\ntype: Pattern\ntitle: State\ndescription: State.\n${extraFront}---\n\n# When to use\n\nAlways.\n\n# How\n\nLike this.\n\n# Example\n\nCode.\n\n# Why\n\nBecause.\n`;
 
-async function setup(dir, front) {
+async function setup(dir: string, front?: string): Promise<void> {
   await okfcli(dir, 'init');
   await okfcli(dir, 'new', 'pattern', 'state', '--description', 'State.');
   writeFileSync(W(dir, 'patterns/state.md'), filled(front));
 }
 
-const check = async (dir) => JSON.parse((await okfcli(dir, 'validate', '--json')).out);
+const check = async (dir: string): Promise<Json> => parseJson((await okfcli(dir, 'validate', '--json')).out);
 // Review-related issue raised for a page, if any.
-const reviewIssue = (res, path) => res.issues.find((i) => i.file === path && i.rule.startsWith('frontmatter.verified'))?.rule;
+const reviewIssue = (res: Json, path: string) => res.issues.find((i: Json) => i.file === path && i.rule.startsWith('frontmatter.verified'))?.rule;
 
 test('verify adds { by, at, hash } and keeps the rest of the file intact', async () => {
   const { dir, cleanup } = tempDir();
@@ -28,13 +28,13 @@ test('verify adds { by, at, hash } and keeps the rest of the file intact', async
     await setup(dir);
     const r = await okfcli(dir, 'verify', 'patterns/state', '--by', 'human:ana', '--json');
     assert.equal(r.code, 0, r.err);
-    const data = JSON.parse(r.out);
+    const data = parseJson(r.out);
     assert.equal(data.tier, 'human-reviewed');
     assert.equal(data.verified.length, 1);
     const page = read(dir, 'patterns/state.md');
     assert.match(page, /# keep this comment/);
     // Compare the parsed data, not the exact YAML layout, which depends on the yaml version.
-    const [entry] = parseFrontmatter(page).data.verified;
+    const [entry] = parseFrontmatter(page).data?.verified as Json[];
     assert.equal(entry.by, 'human:ana');
     assert.match(String(entry.at instanceof Date ? entry.at.toISOString() : entry.at), /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/);
     assert.match(entry.hash, /^[0-9a-f]{16}$/);
@@ -52,8 +52,8 @@ test('verify replaces the entry of the same actor and keeps the others', async (
     await okfcli(dir, 'verify', 'patterns/state.md', '--by', 'process:nightly');
     await okfcli(dir, 'verify', 'patterns/state.md', '--by', 'human:ana');
     const page = read(dir, 'patterns/state.md');
-    assert.equal(page.match(/human:ana/g).length, 1);
-    assert.equal(page.match(/process:nightly/g).length, 1);
+    assert.equal(page.match(/human:ana/g)?.length, 1);
+    assert.equal(page.match(/process:nightly/g)?.length, 1);
   } finally {
     cleanup();
   }
@@ -65,8 +65,8 @@ test('verify converts a single hand-written mapping into a list', async () => {
     await setup(dir, 'verified: { by: human:bo, at: 2026-10-01T00:00:00Z }\n');
     await okfcli(dir, 'verify', 'patterns/state', '--by', 'process:ci');
     const page = read(dir, 'patterns/state.md');
-    const verified = parseFrontmatter(page).data.verified;
-    assert.deepEqual(verified.map((e) => e.by), ['human:bo', 'process:ci']);
+    const verified = parseFrontmatter(page).data?.verified as Json[];
+    assert.deepEqual(verified.map((e: Json) => e.by), ['human:bo', 'process:ci']);
   } finally {
     cleanup();
   }
@@ -76,7 +76,7 @@ test('verify defaults to a machine actor, and honours OKFCLI_ACTOR', async () =>
   const { dir, cleanup } = tempDir();
   try {
     await setup(dir);
-    const r = JSON.parse((await okfcli(dir, 'verify', 'patterns/state', '--json')).out);
+    const r = parseJson((await okfcli(dir, 'verify', 'patterns/state', '--json')).out);
     assert.equal(r.tier, 'machine-confirmed');
     assert.equal(r.verified[0].by, 'okfcli/0.1.0');
   } finally {
