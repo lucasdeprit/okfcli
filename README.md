@@ -6,7 +6,7 @@ Create and maintain project wikis in [Open Knowledge Format (OKF)](https://githu
 
 | Command | What it does |
 |---|---|
-| `okfcli init [folder]` | Create the wiki (default `./wiki`) and connect it to GitHub Copilot |
+| `okfcli init [folder]` | Create the wiki (default `./wiki`) and connect it to your coding agents (Copilot by default; `--claude`, `--codex`, `--opencode`, `--cursor`) |
 | `okfcli new <type> <name> --description "..."` | Create a page from its template and add it to the index |
 | `okfcli validate [--fix]` | Check the wiki and list what nobody has reviewed. `--fix` repairs the mechanical issues |
 | `okfcli verify <path> --by human:<id>` | Mark a page as reviewed |
@@ -57,12 +57,23 @@ Every folder has an `index.md`, generated for you. Every page has `type`, `title
 - **People review:** a page is unreviewed until someone runs `okfcli verify` (or writes the `verified` entry by hand). If a verified page changes afterwards, `validate` reports it as outdated.
 - **No history files:** the history of the wiki is left to git.
 
-## Agents (GitHub Copilot)
+## Agents
 
-`okfcli init` also writes, relative to the directory where you run it:
+`okfcli init` also writes, relative to the directory where you run it, the files that connect the wiki to your coding agents. Pass one flag per tool you use; without any flag it connects GitHub Copilot:
 
-- a pointer block in `AGENTS.md` (or `.github/copilot-instructions.md` if that is what the project uses), so the agent always knows the wiki exists;
-- three skills in `.github/skills/`: `okf-consult-wiki`, `okf-update-wiki` and `okf-review-wiki`.
+```bash
+okfcli init                      # Copilot
+okfcli init --claude             # Claude Code
+okfcli init --claude --codex     # several at once
+```
+
+| Flag | Pointer block in | Skills in |
+|---|---|---|
+| `--copilot` (default) | `AGENTS.md` (or `.github/copilot-instructions.md` if that is what the project uses) | `.github/skills/` |
+| `--claude` | `CLAUDE.md` | `.claude/skills/` |
+| `--codex`, `--opencode`, `--cursor` | `AGENTS.md` | `.agents/skills/` |
+
+The pointer block makes the agent always know the wiki exists. The three skills are `okf-consult-wiki`, `okf-update-wiki` and `okf-review-wiki`. `okfcli` never deletes files, so files of an agent you stop passing stay where they are.
 
 The skills call `okfcli`, so install it globally on the machines where agents run. Run `okfcli init` again to refresh these files; it never touches the wiki pages. `--no-agents` skips them.
 
