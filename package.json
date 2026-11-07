@@ -47,21 +47,21 @@
     "build": "npm run clean && tsc",
     "typecheck": "tsc --noEmit",
     "pretest": "npm run build",
-    "test": "node scripts/test.js",
-    "prepack": "npm run build"
+    "test": "node --test dist/test/*.test.js",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm test"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "access": "public"
   },
   "dependencies": {
     "yaml": "^2.9.1"
   },
   "devDependencies": {
-    "@types/node": "^20.19.43",
+    "@types/node": "^22.20.5",
     "typescript": "^7.0.2"
   }
 }

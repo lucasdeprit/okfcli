@@ -4,7 +4,9 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.1.0] - 2026-11-07
+
+First public release.
 
 ### Added
 - `okfcli init` can connect more coding agents: `--claude`, `--codex`, `--opencode` and `--cursor` (GitHub Copilot stays the default when no flag is given). A new `CLAUDE.md` imports an existing `AGENTS.md` so it does not hide it from Claude Code.
@@ -32,5 +34,3 @@ All notable changes to this project are documented here. The format follows
 - Wiki paths with spaces are quoted in the generated skills.
 - Unexpected errors print a short message and exit with code 2.
 
-## [0.1.0]
-- First version.
