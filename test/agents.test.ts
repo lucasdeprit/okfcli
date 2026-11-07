@@ -2,14 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { tempDir, okfcli, parseJson, type Json } from './helpers.js';
+import { withTempDir, okfcli, parseJson, type Json } from './helpers.js';
 
 const read = (dir: string, rel: string) => readFileSync(join(dir, rel), 'utf8');
 const SKILLS = ['okf-consult-wiki', 'okf-update-wiki', 'okf-review-wiki'];
 
 test('init generates the pointer block and the three Copilot skills', async () => {
-  const { dir, cleanup } = tempDir();
-  try {
+  await withTempDir(async (dir) => {
     const r = await okfcli(dir, 'init', 'docs/wiki');
     assert.equal(r.code, 0, r.err);
     const agents = read(dir, 'AGENTS.md');
@@ -20,14 +19,11 @@ test('init generates the pointer block and the three Copilot skills', async () =
       assert.match(text, /docs\/wiki/);
     }
     assert.match(r.out, /created\s+\.github\/skills\/okf-review-wiki\/SKILL\.md/);
-  } finally {
-    cleanup();
-  }
+  });
 });
 
 test('the skills tell agents to use the CLI and not to review pages themselves', async () => {
-  const { dir, cleanup } = tempDir();
-  try {
+  await withTempDir(async (dir) => {
     await okfcli(dir, 'init');
     const update = read(dir, '.github/skills/okf-update-wiki/SKILL.md');
     assert.match(update, /okfcli new <type> <name> --description/);
@@ -38,27 +34,21 @@ test('the skills tell agents to use the CLI and not to review pages themselves',
     assert.match(review, /okfcli verify <path> --by human:<id>/);
     assert.match(review, /Only after a clear yes/);
     assert.match(review, /Never use a `human:` actor for yourself/);
-  } finally {
-    cleanup();
-  }
+  });
 });
 
 test('the pointer block is appended to an existing AGENTS.md without touching the rest', async () => {
-  const { dir, cleanup } = tempDir();
-  try {
+  await withTempDir(async (dir) => {
     writeFileSync(join(dir, 'AGENTS.md'), '# Rules\n\nBe nice.\n');
     await okfcli(dir, 'init');
     const agents = read(dir, 'AGENTS.md');
     assert.ok(agents.startsWith('# Rules\n\nBe nice.\n\n<!-- okfcli:start -->'));
     assert.equal(agents.match(/okfcli:start/g)?.length, 1);
-  } finally {
-    cleanup();
-  }
+  });
 });
 
 test('running init again refreshes the block in place and reports unchanged files', async () => {
-  const { dir, cleanup } = tempDir();
-  try {
+  await withTempDir(async (dir) => {
     writeFileSync(join(dir, 'AGENTS.md'), '# Rules\n');
     await okfcli(dir, 'init');
     const file = join(dir, 'AGENTS.md');
@@ -77,57 +67,43 @@ test('running init again refreshes the block in place and reports unchanged file
     assert.equal(agents.match(/okfcli:start/g)?.length, 1);
     const third = parseJson((await okfcli(dir, 'init', '--json')).out);
     assert.ok(third.agent_files.every((f: Json) => f.status === 'unchanged' || f.path === 'AGENTS.md'));
-  } finally {
-    cleanup();
-  }
+  });
 });
 
 test('uses .github/copilot-instructions.md when the project has it and no AGENTS.md', async () => {
-  const { dir, cleanup } = tempDir();
-  try {
+  await withTempDir(async (dir) => {
     mkdirSync(join(dir, '.github'));
     writeFileSync(join(dir, '.github/copilot-instructions.md'), 'Use tabs.\n');
     await okfcli(dir, 'init');
     assert.ok(!existsSync(join(dir, 'AGENTS.md')));
     assert.match(read(dir, '.github/copilot-instructions.md'), /^Use tabs\.\n\n<!-- okfcli:start -->/);
-  } finally {
-    cleanup();
-  }
+  });
 });
 
 test('--no-agents skips the agent files', async () => {
-  const { dir, cleanup } = tempDir();
-  try {
+  await withTempDir(async (dir) => {
     const r = await okfcli(dir, 'init', '--no-agents');
     assert.equal(r.code, 0, r.err);
     assert.ok(existsSync(join(dir, 'wiki/index.md')));
     assert.ok(!existsSync(join(dir, 'AGENTS.md')));
     assert.ok(!existsSync(join(dir, '.github')));
-  } finally {
-    cleanup();
-  }
+  });
 });
 
 test('the update skill lists the folders declared in extra_folders', async () => {
-  const { dir, cleanup } = tempDir();
-  try {
+  await withTempDir(async (dir) => {
     await okfcli(dir, 'init');
     const profile = join(dir, 'wiki/.okf-profile.yaml');
     writeFileSync(profile, readFileSync(profile, 'utf8').replace('extra_folders: []', 'extra_folders:\n  - name: mobile\n    type: Mobile\n    sections: ["# Summary"]'));
     await okfcli(dir, 'init');
     assert.match(read(dir, '.github/skills/okf-update-wiki/SKILL.md'), /- `mobile` -> `mobile\/` \(sections: `# Summary`\)/);
-  } finally {
-    cleanup();
-  }
+  });
 });
 
 test('init creates no git repository and no log', async () => {
-  const { dir, cleanup } = tempDir();
-  try {
+  await withTempDir(async (dir) => {
     await okfcli(dir, 'init');
     assert.ok(!existsSync(join(dir, '.git')));
     assert.ok(!existsSync(join(dir, 'wiki/log.md')));
-  } finally {
-    cleanup();
-  }
+  });
 });

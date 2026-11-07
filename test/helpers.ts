@@ -1,12 +1,21 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { run } from '../src/cli.js';
 
-export function tempDir() {
+// Runs `fn` in a fresh temp directory and always removes it afterwards.
+export async function withTempDir(fn: (dir: string) => Promise<void> | void): Promise<void> {
   const dir = mkdtempSync(join(tmpdir(), 'okfcli-'));
-  return { dir, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
+  try {
+    await fn(dir);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
+
+// Paths and reads inside the wiki created by `okfcli init` (./wiki).
+export const wikiFile = (dir: string, rel: string): string => join(dir, 'wiki', rel);
+export const readWiki = (dir: string, rel: string): string => readFileSync(wikiFile(dir, rel), 'utf8');
 
 // Runs the CLI capturing output and exit code.
 export async function okfcli(cwd: string, ...args: string[]): Promise<{ code: number; out: string; err: string }> {

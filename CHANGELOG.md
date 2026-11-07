@@ -10,6 +10,7 @@ All notable changes to this project are documented here. The format follows
 - Rewritten in TypeScript (strict). The package now ships compiled JavaScript with type declarations from `dist/`.
 - Added a small programmatic API (`run`, `loadProfile`, `validateWiki`, `parseFrontmatter`, `contentHash`, `trustState`).
 - Internal cleanup: `errors` and `review` modules merged into their only users, unused helpers removed.
+- Rules that lived in two places now live in one: the wiki directory walk (a symlinked `.md` is now ignored by both validation and the indexes; before it was validated but not indexed), required sections and their skeleton (`validate` and `validate --fix` share them), folder lookup, and the created/updated/unchanged file writes.
 
 - Renamed the CLI, package and generated markers from `okw` to `okfcli`
   (`OKW_ACTOR` is now `OKFCLI_ACTOR`; the pointer block markers are

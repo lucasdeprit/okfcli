@@ -1,12 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { tempDir, okfcli, parseJson, type Json } from './helpers.js';
+import { withTempDir, okfcli, wikiFile, readWiki, parseJson, type Json } from './helpers.js';
 import { parseFrontmatter } from '../src/frontmatter.js';
 
-const W = (dir: string, rel: string) => join(dir, 'wiki', rel);
-const read = (dir: string, rel: string) => readFileSync(W(dir, rel), 'utf8');
 
 // A pattern page whose placeholders are filled in, with a frontmatter comment to check it survives.
 const filled = (extraFront = '') =>
@@ -15,7 +13,7 @@ const filled = (extraFront = '') =>
 async function setup(dir: string, front?: string): Promise<void> {
   await okfcli(dir, 'init');
   await okfcli(dir, 'new', 'pattern', 'state', '--description', 'State.');
-  writeFileSync(W(dir, 'patterns/state.md'), filled(front));
+  writeFileSync(wikiFile(dir, 'patterns/state.md'), filled(front));
 }
 
 const check = async (dir: string): Promise<Json> => parseJson((await okfcli(dir, 'validate', '--json')).out);
@@ -23,15 +21,14 @@ const check = async (dir: string): Promise<Json> => parseJson((await okfcli(dir,
 const reviewIssue = (res: Json, path: string) => res.issues.find((i: Json) => i.file === path && i.rule.startsWith('frontmatter.verified'))?.rule;
 
 test('verify adds { by, at, hash } and keeps the rest of the file intact', async () => {
-  const { dir, cleanup } = tempDir();
-  try {
+  await withTempDir(async (dir) => {
     await setup(dir);
     const r = await okfcli(dir, 'verify', 'patterns/state', '--by', 'human:ana', '--json');
     assert.equal(r.code, 0, r.err);
     const data = parseJson(r.out);
     assert.equal(data.tier, 'human-reviewed');
     assert.equal(data.verified.length, 1);
-    const page = read(dir, 'patterns/state.md');
+    const page = readWiki(dir, 'patterns/state.md');
     assert.match(page, /# keep this comment/);
     // Compare the parsed data, not the exact YAML layout, which depends on the yaml version.
     const [entry] = parseFrontmatter(page).data?.verified as Json[];
@@ -39,151 +36,121 @@ test('verify adds { by, at, hash } and keeps the rest of the file intact', async
     assert.match(String(entry.at instanceof Date ? entry.at.toISOString() : entry.at), /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/);
     assert.match(entry.hash, /^[0-9a-f]{16}$/);
     assert.match(page, /\n---\n\n# When to use\n\nAlways\.\n/);
-  } finally {
-    cleanup();
-  }
+  });
 });
 
 test('verify replaces the entry of the same actor and keeps the others', async () => {
-  const { dir, cleanup } = tempDir();
-  try {
+  await withTempDir(async (dir) => {
     await setup(dir);
     await okfcli(dir, 'verify', 'patterns/state.md', '--by', 'human:ana');
     await okfcli(dir, 'verify', 'patterns/state.md', '--by', 'process:nightly');
     await okfcli(dir, 'verify', 'patterns/state.md', '--by', 'human:ana');
-    const page = read(dir, 'patterns/state.md');
+    const page = readWiki(dir, 'patterns/state.md');
     assert.equal(page.match(/human:ana/g)?.length, 1);
     assert.equal(page.match(/process:nightly/g)?.length, 1);
-  } finally {
-    cleanup();
-  }
+  });
 });
 
 test('verify converts a single hand-written mapping into a list', async () => {
-  const { dir, cleanup } = tempDir();
-  try {
+  await withTempDir(async (dir) => {
     await setup(dir, 'verified: { by: human:bo, at: 2026-10-01T00:00:00Z }\n');
     await okfcli(dir, 'verify', 'patterns/state', '--by', 'process:ci');
-    const page = read(dir, 'patterns/state.md');
+    const page = readWiki(dir, 'patterns/state.md');
     const verified = parseFrontmatter(page).data?.verified as Json[];
     assert.deepEqual(verified.map((e: Json) => e.by), ['human:bo', 'process:ci']);
-  } finally {
-    cleanup();
-  }
+  });
 });
 
 test('verify defaults to a machine actor, and honours OKFCLI_ACTOR', async () => {
-  const { dir, cleanup } = tempDir();
-  try {
+  await withTempDir(async (dir) => {
     await setup(dir);
     const r = parseJson((await okfcli(dir, 'verify', 'patterns/state', '--json')).out);
     assert.equal(r.tier, 'machine-confirmed');
     assert.equal(r.verified[0].by, 'okfcli/0.1.0');
-  } finally {
-    cleanup();
-  }
+  });
 });
 
 test('editing a verified page makes the verification outdated until it is verified again', async () => {
-  const { dir, cleanup } = tempDir();
-  try {
+  await withTempDir(async (dir) => {
     await setup(dir);
     assert.equal(reviewIssue(await check(dir), 'patterns/state.md'), 'frontmatter.verified');
     await okfcli(dir, 'verify', 'patterns/state', '--by', 'human:ana');
     assert.equal(reviewIssue(await check(dir), 'patterns/state.md'), undefined);
 
-    writeFileSync(W(dir, 'patterns/state.md'), read(dir, 'patterns/state.md').replace('Because.', 'Because of this.'));
+    writeFileSync(wikiFile(dir, 'patterns/state.md'), readWiki(dir, 'patterns/state.md').replace('Because.', 'Because of this.'));
     const after = await check(dir);
     assert.equal(reviewIssue(after, 'patterns/state.md'), 'frontmatter.verified-outdated');
     assert.equal(after.review.outdated, 1);
 
     await okfcli(dir, 'verify', 'patterns/state', '--by', 'human:ana');
     assert.equal(reviewIssue(await check(dir), 'patterns/state.md'), undefined);
-  } finally {
-    cleanup();
-  }
+  });
 });
 
 test('changing status does not invalidate a verification; re-verifying drops outdated entries of others', async () => {
-  const { dir, cleanup } = tempDir();
-  try {
+  await withTempDir(async (dir) => {
     await setup(dir);
     await okfcli(dir, 'verify', 'patterns/state', '--by', 'process:ci');
-    writeFileSync(W(dir, 'patterns/state.md'), read(dir, 'patterns/state.md').replace('type: Pattern', 'status: stable\ntype: Pattern'));
+    writeFileSync(wikiFile(dir, 'patterns/state.md'), readWiki(dir, 'patterns/state.md').replace('type: Pattern', 'status: stable\ntype: Pattern'));
     assert.equal(reviewIssue(await check(dir), 'patterns/state.md'), undefined);
 
-    writeFileSync(W(dir, 'patterns/state.md'), read(dir, 'patterns/state.md').replace('Code.', 'More code.'));
+    writeFileSync(wikiFile(dir, 'patterns/state.md'), readWiki(dir, 'patterns/state.md').replace('Code.', 'More code.'));
     await okfcli(dir, 'verify', 'patterns/state', '--by', 'human:ana');
-    const page = read(dir, 'patterns/state.md');
+    const page = readWiki(dir, 'patterns/state.md');
     assert.ok(!page.includes('process:ci'), 'the outdated entry of another actor is dropped');
     assert.match(page, /human:ana/);
-  } finally {
-    cleanup();
-  }
+  });
 });
 
 test('a verification written by hand (no hash) is accepted and never outdated', async () => {
-  const { dir, cleanup } = tempDir();
-  try {
+  await withTempDir(async (dir) => {
     await setup(dir, 'verified:\n  - { by: human:ana, at: 2026-10-01T00:00:00Z }\n');
     assert.equal(reviewIssue(await check(dir), 'patterns/state.md'), undefined);
-    writeFileSync(W(dir, 'patterns/state.md'), read(dir, 'patterns/state.md').replace('Because.', 'Changed.'));
+    writeFileSync(wikiFile(dir, 'patterns/state.md'), readWiki(dir, 'patterns/state.md').replace('Because.', 'Changed.'));
     const after = await check(dir);
     assert.equal(reviewIssue(after, 'patterns/state.md'), undefined);
     assert.equal(after.review['human-reviewed'], 1);
-  } finally {
-    cleanup();
-  }
+  });
 });
 
 test('verify refuses pages with unfilled TODOs unless --force', async () => {
-  const { dir, cleanup } = tempDir();
-  try {
+  await withTempDir(async (dir) => {
     await okfcli(dir, 'init');
     await okfcli(dir, 'new', 'pattern', 'state', '--description', 'State.');
     const refused = await okfcli(dir, 'verify', 'patterns/state', '--by', 'human:ana');
     assert.equal(refused.code, 1);
     assert.match(refused.err, /4 unfilled TODO placeholders/);
-    assert.ok(!/verified/.test(read(dir, 'patterns/state.md')));
+    assert.ok(!/verified/.test(readWiki(dir, 'patterns/state.md')));
     const forced = await okfcli(dir, 'verify', 'patterns/state', '--by', 'human:ana', '--force');
     assert.equal(forced.code, 0, forced.err);
-  } finally {
-    cleanup();
-  }
+  });
 });
 
 test('verify validates its inputs', async () => {
-  const { dir, cleanup } = tempDir();
-  try {
+  await withTempDir(async (dir) => {
     await setup(dir);
     assert.match((await okfcli(dir, 'verify')).err, /Usage: okfcli verify/);
     assert.match((await okfcli(dir, 'verify', 'patterns/nope')).err, /Page not found/);
     assert.match((await okfcli(dir, 'verify', 'patterns/state', '--by', 'ana')).err, /Invalid actor/);
-    writeFileSync(W(dir, 'patterns/raw.md'), '# no frontmatter\n');
+    writeFileSync(wikiFile(dir, 'patterns/raw.md'), '# no frontmatter\n');
     assert.match((await okfcli(dir, 'verify', 'patterns/raw')).err, /no parseable frontmatter/);
-  } finally {
-    cleanup();
-  }
+  });
 });
 
 test('verify accepts a path relative to the current directory', async () => {
-  const { dir, cleanup } = tempDir();
-  try {
+  await withTempDir(async (dir) => {
     await setup(dir);
     const r = await okfcli(join(dir, 'wiki/patterns'), 'verify', 'state.md', '--by', 'human:ana');
     assert.equal(r.code, 0, r.err);
     assert.match(r.out, /Verified patterns\/state\.md/);
-  } finally {
-    cleanup();
-  }
+  });
 });
 
 test('validate summarises the review state and skips deprecated pages', async () => {
-  const { dir, cleanup } = tempDir();
-  try {
+  await withTempDir(async (dir) => {
     await setup(dir);
     await okfcli(dir, 'verify', 'patterns/state', '--by', 'human:ana');
-    writeFileSync(W(dir, 'patterns/old.md'), filled('status: deprecated\n').replace('title: State', 'title: Old'));
+    writeFileSync(wikiFile(dir, 'patterns/old.md'), filled('status: deprecated\n').replace('title: State', 'title: Old'));
     await okfcli(dir, 'validate', '--fix');
     const r = await check(dir);
     assert.deepEqual(r.review, { pages: 5, deprecated: 1, 'human-reviewed': 1, 'machine-confirmed': 0, unverified: 3, outdated: 0 });
@@ -191,21 +158,16 @@ test('validate summarises the review state and skips deprecated pages', async ()
     assert.equal(reviewIssue(r, 'testing/strategy.md'), 'frontmatter.verified');
     const text = (await okfcli(dir, 'validate')).out;
     assert.match(text, /Review: 1 human-reviewed, 0 machine-confirmed, 3 unverified, 0 outdated/);
-  } finally {
-    cleanup();
-  }
+  });
 });
 
 test('the status and index commands no longer exist', async () => {
-  const { dir, cleanup } = tempDir();
-  try {
+  await withTempDir(async (dir) => {
     await okfcli(dir, 'init');
     for (const name of ['status', 'index', 'log']) {
       const r = await okfcli(dir, name);
       assert.equal(r.code, 1);
       assert.match(r.err, /Unknown command/);
     }
-  } finally {
-    cleanup();
-  }
+  });
 });
