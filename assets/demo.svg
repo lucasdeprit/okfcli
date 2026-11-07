@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="470" viewBox="0 0 900 470" role="img" aria-label="okfcli terminal demo">
+  <rect width="900" height="470" rx="14" fill="#0d1117" stroke="#30363d"/>
+  <path d="M0 14a14 14 0 0 1 14-14h872a14 14 0 0 1 14 14v26H0z" fill="#161b22"/>
+  <circle cx="26" cy="20" r="6" fill="#ff5f56"/><circle cx="48" cy="20" r="6" fill="#ffbd2e"/><circle cx="70" cy="20" r="6" fill="#27c93f"/>
+  <text x="450" y="25" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" fill="#8b949e">~/my-project</text>
+  <g xml:space="preserve" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="16">
+    <text x="28" y="76"><tspan fill="#7ee787">$</tspan><tspan fill="#e6edf3"> okfcli init docs/wiki --claude</tspan></text>
+    <text x="28" y="102" fill="#8b949e">Wiki created in docs/wiki</text>
+    <text x="28" y="124" fill="#8b949e">&#160;&#160;overview/ architecture/ patterns/ conventions/ workflows/ testing/</text>
+
+    <text x="28" y="168"><tspan fill="#7ee787">$</tspan><tspan fill="#e6edf3"> okfcli new pattern state-management \</tspan></text>
+    <text x="28" y="190" fill="#e6edf3">&#160;&#160;&#160;&#160;--description "How screen state is structured."</text>
+    <text x="28" y="216"><tspan fill="#7ee787">✓</tspan><tspan fill="#8b949e"> Created patterns/state-management.md (type: Pattern)</tspan></text>
+    <text x="28" y="238"><tspan fill="#7ee787">✓</tspan><tspan fill="#8b949e"> Indexes updated: patterns/index.md</tspan></text>
+
+    <text x="28" y="282"><tspan fill="#7ee787">$</tspan><tspan fill="#e6edf3"> okfcli validate</tspan></text>
+    <text x="28" y="308"><tspan fill="#d29922">warning</tspan><tspan fill="#79c0ff"> page.todo</tspan><tspan fill="#e6edf3">  patterns/state-management.md</tspan></text>
+    <text x="28" y="330"><tspan fill="#d29922">warning</tspan><tspan fill="#79c0ff"> frontmatter.verified</tspan><tspan fill="#e6edf3">  overview/project.md</tspan></text>
+
+    <text x="28" y="374"><tspan fill="#7ee787">$</tspan><tspan fill="#e6edf3"> okfcli verify patterns/state-management --by human:ana</tspan></text>
+    <text x="28" y="400"><tspan fill="#7ee787">✓</tspan><tspan fill="#8b949e"> Page marked as reviewed by human:ana</tspan></text>
+    <text x="28" y="438" fill="#7ee787">$</text><rect x="48" y="424" width="10" height="18" fill="#e6edf3" opacity=".8"/>
+  </g>
+</svg>
