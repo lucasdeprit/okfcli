@@ -6,6 +6,9 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- `okfcli init` can connect more coding agents: `--claude`, `--codex`, `--opencode` and `--cursor` (GitHub Copilot stays the default when no flag is given). A new `CLAUDE.md` imports an existing `AGENTS.md` so it does not hide it from Claude Code.
+
 ### Changed
 - Rewritten in TypeScript (strict). The package now ships compiled JavaScript with type declarations from `dist/`.
 - Added a small programmatic API (`run`, `loadProfile`, `validateWiki`, `parseFrontmatter`, `contentHash`, `trustState`).

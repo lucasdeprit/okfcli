@@ -107,3 +107,87 @@ test('init creates no git repository and no log', async () => {
     assert.ok(!existsSync(join(dir, 'wiki/log.md')));
   });
 });
+
+const exists = (dir: string, rel: string): boolean => existsSync(join(dir, rel));
+const skillsAt = (dir: string, skillsDir: string): boolean => SKILLS.every((name) => exists(dir, `${skillsDir}/${name}/SKILL.md`));
+
+test('with no agent flag only Copilot is connected', async () => {
+  await withTempDir(async (dir) => {
+    await okfcli(dir, 'init');
+    assert.ok(skillsAt(dir, '.github/skills'));
+    assert.ok(!exists(dir, '.claude') && !exists(dir, '.agents') && !exists(dir, 'CLAUDE.md'));
+  });
+});
+
+test('--claude connects Claude Code and not Copilot', async () => {
+  await withTempDir(async (dir) => {
+    const r = await okfcli(dir, 'init', '--claude');
+    assert.equal(r.code, 0, r.err);
+    assert.ok(skillsAt(dir, '.claude/skills'));
+    assert.match(read(dir, 'CLAUDE.md'), /<!-- okfcli:start -->[\s\S]*wiki\/index\.md[\s\S]*<!-- okfcli:end -->/);
+    assert.ok(!exists(dir, '.github') && !exists(dir, 'AGENTS.md'));
+  });
+});
+
+test('--claude puts the block in an existing CLAUDE.md and keeps the rest', async () => {
+  await withTempDir(async (dir) => {
+    writeFileSync(join(dir, 'CLAUDE.md'), '# Mine\n\nBe brief.\n');
+    await okfcli(dir, 'init', '--claude');
+    assert.ok(read(dir, 'CLAUDE.md').startsWith('# Mine\n\nBe brief.\n\n<!-- okfcli:start -->'));
+  });
+});
+
+test('a new CLAUDE.md imports an existing AGENTS.md and leaves it untouched', async () => {
+  await withTempDir(async (dir) => {
+    writeFileSync(join(dir, 'AGENTS.md'), '# Rules\n\nUse tabs.\n');
+    await okfcli(dir, 'init', '--claude');
+    assert.ok(read(dir, 'CLAUDE.md').startsWith('@AGENTS.md\n\n<!-- okfcli:start -->'));
+    assert.equal(read(dir, 'AGENTS.md'), '# Rules\n\nUse tabs.\n');
+  });
+});
+
+test('--codex --opencode --cursor share one AGENTS.md and one .agents/skills', async () => {
+  await withTempDir(async (dir) => {
+    const r = await okfcli(dir, 'init', '--codex', '--opencode', '--cursor', '--json');
+    const paths: string[] = parseJson(r.out).agent_files.map((f: Json) => f.path);
+    assert.equal(new Set(paths).size, paths.length, 'no file is written twice');
+    assert.equal(paths.length, 1 + SKILLS.length);
+    assert.ok(skillsAt(dir, '.agents/skills'));
+    assert.equal(read(dir, 'AGENTS.md').match(/okfcli:start/g)?.length, 1);
+    assert.ok(!exists(dir, '.github'));
+  });
+});
+
+test('--copilot --claude connects both, and a second run changes nothing', async () => {
+  await withTempDir(async (dir) => {
+    await okfcli(dir, 'init', '--copilot', '--claude');
+    assert.ok(skillsAt(dir, '.github/skills') && skillsAt(dir, '.claude/skills'));
+    assert.ok(read(dir, 'CLAUDE.md').startsWith('@AGENTS.md\n\n'), 'CLAUDE.md imports the AGENTS.md written in the same run');
+    const again = parseJson((await okfcli(dir, 'init', '--copilot', '--claude', '--json')).out);
+    assert.ok(again.agent_files.every((f: Json) => f.status === 'unchanged'));
+  });
+});
+
+test('the order of the flags does not change the result', async () => {
+  await withTempDir(async (a) => {
+    await withTempDir(async (b) => {
+      await okfcli(a, 'init', '--claude', '--copilot');
+      await okfcli(b, 'init', '--copilot', '--claude');
+      assert.equal(read(a, 'CLAUDE.md'), read(b, 'CLAUDE.md'));
+    });
+  });
+});
+
+test('--no-agents wins over the agent flags', async () => {
+  await withTempDir(async (dir) => {
+    await okfcli(dir, 'init', '--claude', '--no-agents');
+    assert.ok(!exists(dir, 'CLAUDE.md') && !exists(dir, '.claude'));
+  });
+});
+
+test('init --help lists every supported agent', async () => {
+  await withTempDir(async (dir) => {
+    const r = await okfcli(dir, 'init', '--help');
+    for (const name of ['copilot', 'claude', 'codex', 'opencode', 'cursor']) assert.match(r.out, new RegExp(`--${name}\\b`));
+  });
+});
