@@ -1,7 +1,6 @@
-import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { typeAlias } from './profile.js';
-import { UserError, writeText } from './util.js';
+import { UserError, readIfExists, writeWithStatus } from './util.js';
 import type { AgentFileResult, Profile } from './types.js';
 
 // Files generated for GitHub Copilot in VS Code (SPEC.md section 10):
@@ -113,48 +112,30 @@ Reviewing is a human act. You prepare the review; the person decides.
   ];
 }
 
-// Inserts the block into the file, or replaces it if the markers are already there.
-export function upsertBlock(file: string, block: string): { next: string; status: AgentFileResult['status'] } {
-  const text = existsSync(file) ? readFileSync(file, 'utf8') : null;
-  if (text === null) return { next: block, status: 'created' };
-  const start = text.indexOf(BLOCK_START);
-  const end = start === -1 ? -1 : text.indexOf(BLOCK_END, start);
-  let next: string;
-  if (start !== -1 && end === -1) {
+// Inserts the block into the file text, or replaces it if the markers are already there.
+export function upsertBlock(current: string | null, block: string, file: string): string {
+  if (current === null) return block;
+  const start = current.indexOf(BLOCK_START);
+  if (start === -1) return `${current.replace(/\s+$/, '')}${current.trim() ? '\n\n' : ''}${block}`;
+  const end = current.indexOf(BLOCK_END, start);
+  if (end === -1) {
     throw new UserError(`${file} has "${BLOCK_START}" without "${BLOCK_END}". Fix or remove the marker, then run "okfcli init" again.`);
   }
-  if (start !== -1) {
-    next = text.slice(0, start) + block.trimEnd() + text.slice(end + BLOCK_END.length);
-  } else {
-    next = `${text.replace(/\s+$/, '')}${text.trim() ? '\n\n' : ''}${block}`;
-  }
-  return { next, status: next === text ? 'unchanged' : 'updated' };
+  return current.slice(0, start) + block.trimEnd() + current.slice(end + BLOCK_END.length);
 }
 
 // Which file carries the pointer block: the one that already has it, else the
 // first that exists, else a new AGENTS.md.
 export function pointerFile(projectRoot: string): string {
-  const withBlock = POINTER_FILES.find((f) => {
-    const p = join(projectRoot, f);
-    return existsSync(p) && readFileSync(p, 'utf8').includes(BLOCK_START);
-  });
-  return withBlock ?? POINTER_FILES.find((f) => existsSync(join(projectRoot, f))) ?? 'AGENTS.md';
+  const withBlock = POINTER_FILES.find((f) => readIfExists(join(projectRoot, f))?.includes(BLOCK_START));
+  return withBlock ?? POINTER_FILES.find((f) => readIfExists(join(projectRoot, f)) !== null) ?? 'AGENTS.md';
 }
 
 // Writes (or refreshes) the agent files. Returns [{ path, status }].
 export function writeAgentFiles({ projectRoot, wiki, profile, version }: { projectRoot: string; wiki: string; profile: Profile; version: string }): AgentFileResult[] {
-  const results: AgentFileResult[] = [];
   const pointer = pointerFile(projectRoot);
-  const { next, status } = upsertBlock(join(projectRoot, pointer), pointerBlock(wiki));
-  if (status !== 'unchanged') writeText(join(projectRoot, pointer), next);
-  results.push({ path: pointer, status });
-
-  for (const file of skillFiles({ wiki, profile, version })) {
-    const abs = join(projectRoot, file.path);
-    const current = existsSync(abs) ? readFileSync(abs, 'utf8') : null;
-    const fileStatus: AgentFileResult['status'] = current === null ? 'created' : current === file.text ? 'unchanged' : 'updated';
-    if (fileStatus !== 'unchanged') writeText(abs, file.text);
-    results.push({ path: file.path, status: fileStatus });
-  }
-  return results;
+  const pointerPath = join(projectRoot, pointer);
+  const pointerText = upsertBlock(readIfExists(pointerPath), pointerBlock(wiki), pointer);
+  const files = [{ path: pointer, text: pointerText }, ...skillFiles({ wiki, profile, version })];
+  return files.map((f) => ({ path: f.path, status: writeWithStatus(join(projectRoot, f.path), f.text) }));
 }

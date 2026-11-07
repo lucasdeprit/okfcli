@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync, readFileSync, existsSync, renameSync, rmSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { stringify } from 'yaml';
 
@@ -32,11 +32,25 @@ export function createText(file: string, text: string): void {
   writeFileSync(file, text, { flag: 'wx' });
 }
 
-// Writes only if the content changes. Returns true if it wrote.
-export function writeIfChanged(file: string, text: string): boolean {
-  if (existsSync(file) && readFileSync(file, 'utf8') === text) return false;
+// Reads a text file, or null when it does not exist (or is a directory).
+export function readIfExists(file: string): string | null {
+  try {
+    return readFileSync(file, 'utf8');
+  } catch (e) {
+    const code = errorCode(e);
+    if (code === 'ENOENT' || code === 'EISDIR') return null;
+    throw e;
+  }
+}
+
+export type WriteStatus = 'created' | 'updated' | 'unchanged';
+
+// Writes the file only when its content changes, and says what happened.
+export function writeWithStatus(file: string, text: string): WriteStatus {
+  const current = readIfExists(file);
+  if (current === text) return 'unchanged';
   writeText(file, text);
-  return true;
+  return current === null ? 'created' : 'updated';
 }
 
 export function humanize(slug: string): string {

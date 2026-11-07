@@ -1,4 +1,5 @@
 // Shapes shared across modules.
+import type { WriteStatus } from './util.js';
 
 export type Severity = 'error' | 'warning' | 'off';
 
@@ -68,5 +69,5 @@ export interface CommandResult {
 
 export interface AgentFileResult {
   path: string;
-  status: 'created' | 'updated' | 'unchanged';
+  status: WriteStatus;
 }

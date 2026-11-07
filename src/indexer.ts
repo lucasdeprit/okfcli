@@ -1,8 +1,8 @@
-import { readFileSync, existsSync, statSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseFrontmatter } from './frontmatter.js';
 import { listDir, wikiDirs } from './pages.js';
-import { humanize, writeIfChanged, toPosix, RESERVED } from './util.js';
+import { humanize, readIfExists, toPosix, writeText, RESERVED } from './util.js';
 import { OKF_VERSION, folderByName } from './profile.js';
 import type { Profile } from './types.js';
 
@@ -46,9 +46,9 @@ export function regenerateIndexes(root: string, profile: Profile, { check = fals
   for (const rel of ['', ...wikiDirs(root)]) {
     const file = join(root, rel, 'index.md');
     const text = renderIndex(root, rel, profile);
-    const current = existsSync(file) && statSync(file).isFile() ? readFileSync(file, 'utf8') : null;
+    const current = readIfExists(file);
     if (current !== null && current.replace(/\r\n/g, '\n') === text) continue;
-    if (!check) writeIfChanged(file, text);
+    if (!check) writeText(file, text);
     changed.push(toPosix(rel ? `${rel}/index.md` : 'index.md'));
   }
   return changed;
