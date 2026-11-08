@@ -11,8 +11,8 @@ Checks the wiki against OKF v0.2 and the base profile (see SPEC.md section 8):
 structure, sections, links, indexes and review state (which pages nobody has
 reviewed, or that changed after being verified). Exits with code 1 if there is
 any error (with --strict, any warning too).
-  --fix     repair what can be decided mechanically (folders, required pages,
-            missing section skeletons, indexes), then validate again
+  --fix     repair what can be decided mechanically (profile keys, required
+            folders and pages, missing section skeletons, indexes), then validate again
   --strict  treat warnings as failures
   --json    print { ok, errors, warnings, fixed, review, issues }, each issue as
             { rule, severity, file, message, fix }`;
@@ -35,8 +35,8 @@ function reviewSummary(root: string, profile: Profile): ReviewSummary {
 }
 
 export function validateCommand({ root, fix = false, strict = false }: { root: string; fix?: boolean | undefined; strict?: boolean | undefined }): CommandResult {
-  const profile = loadProfile(root);
-  const fixed = fix ? applyFixes(root, profile) : [];
+  const fixed = fix ? applyFixes(root, loadProfile(root)) : [];
+  const profile = loadProfile(root); // after the fixes: they may have written the profile
   const issues = validateWiki(root, profile);
   const errors = issues.filter((i) => i.severity === 'error').length;
   const warnings = issues.length - errors;

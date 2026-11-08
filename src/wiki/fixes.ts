@@ -1,33 +1,35 @@
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { CORE_FOLDERS, folderByName } from '../core/profile.js';
+import { folderByName, loadProfile, writeMissingRequired } from '../core/profile.js';
 import { loadWiki, missingSections, scanBody } from './pages.js';
 import { regenerateIndexes } from './indexer.js';
-import { requiredPages, sectionSkeleton, testingStrategyPage } from '../generate/templates.js';
+import { requiredPageTemplates, sectionSkeleton } from '../generate/templates.js';
 import { writeText } from '../core/util.js';
 import type { Profile } from '../core/types.js';
 
 // Repairs only what can be decided mechanically. Returns a list of what was done.
-export function applyFixes(root: string, profile: Profile): string[] {
+export function applyFixes(root: string, initial: Profile): string[] {
   const done: string[] = [];
 
-  for (const folder of CORE_FOLDERS) {
-    if (!existsSync(join(root, folder.name))) {
-      mkdirSync(join(root, folder.name), { recursive: true });
-      done.push(`Created folder ${folder.name}/`);
+  // A profile without required_folders / required_pages gets them written first.
+  let profile = initial;
+  const added = writeMissingRequired(root);
+  if (added.length) {
+    done.push(`Wrote ${added.join(' and ')} to .okf-profile.yaml`);
+    profile = loadProfile(root);
+  }
+
+  for (const name of profile.requiredFolders) {
+    if (!existsSync(join(root, name))) {
+      mkdirSync(join(root, name), { recursive: true });
+      done.push(`Created folder ${name}/`);
     }
   }
-  for (const page of requiredPages()) {
+  for (const page of requiredPageTemplates(profile)) {
     if (!existsSync(join(root, page.path))) {
       writeText(join(root, page.path), page.text);
       done.push(`Recreated ${page.path}`);
     }
-  }
-
-  if (!loadWiki(root).concepts.some((c) => c.folder === 'testing')) {
-    const page = testingStrategyPage();
-    writeText(join(root, page.path), page.text);
-    done.push(`Created ${page.path}`);
   }
 
   for (const page of loadWiki(root).concepts) {

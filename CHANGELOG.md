@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- `required_folders` and `required_pages` in `.okf-profile.yaml`: each wiki now decides which folders and pages `validate` requires. `init` writes the base ones, so the default behaviour is unchanged, and a wiki can drop (for example) `conventions` or `testing`, or require a page of its own. A folder that is no longer required is still recognized: its pages keep being checked against its `type` and sections.
+- `profile.migrate` warning, for profiles written before those keys existed. Until the keys are written they are read as requiring the base ones. `validate --fix` and `init` write them, keeping comments and the other keys.
+
+### Changed
+- The rule `structure.core-folder` is now `structure.required-folder`. A `severity` override under the old name no longer applies.
+- The consult skill no longer lists folders: it sends the agent to the wiki's `index.md`, so it stays correct when a wiki requires other folders.
+
+### Removed
+- `structure.testing-page` and the `testing/strategy.md` scaffold. `testing/` is now a folder like any other: when required, it only has to exist.
+
 ## [0.1.1] - 2026-11-07
 
 No functional changes. First version published from GitHub Actions with a provenance attestation (npm trusted publishing).
