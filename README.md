@@ -4,10 +4,10 @@
 
 <br>
 
-[![npm](https://img.shields.io/npm/v/okfcli?style=for-the-badge&color=7c3aed)](https://www.npmjs.com/package/okfcli)
-[![CI](https://img.shields.io/github/actions/workflow/status/lucasdeprit/okfcli/ci.yml?style=for-the-badge&label=CI)](https://github.com/lucasdeprit/okfcli/actions/workflows/ci.yml)
-[![license](https://img.shields.io/npm/l/okfcli?style=for-the-badge&color=0ea5e9)](LICENSE)
-[![node](https://img.shields.io/node/v/okfcli?style=for-the-badge&color=22c55e)](#1-install)
+[![npm](https://img.shields.io/npm/v/okfcli?color=7c3aed)](https://www.npmjs.com/package/okfcli)
+[![CI](https://github.com/lucasdeprit/okfcli/actions/workflows/ci.yml/badge.svg)](https://github.com/lucasdeprit/okfcli/actions/workflows/ci.yml)
+[![license](https://img.shields.io/npm/l/okfcli?color=0ea5e9)](LICENSE)
+[![node](https://img.shields.io/node/v/okfcli?color=22c55e)](#1-install)
 
 **A CLI to create and maintain project wikis in [Open Knowledge Format (OKF)](https://github.com/GoogleCloudPlatform/open-knowledge-format).**
 
