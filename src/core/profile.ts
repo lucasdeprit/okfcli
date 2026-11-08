@@ -2,6 +2,7 @@ import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parse, parseDocument } from 'yaml';
 import { KEBAB, UserError } from './util.js';
+import { TEMPLATES, type WikiTemplate } from './wiki-templates.js';
 import type { Folder, Profile, Severity } from './types.js';
 
 export const PROFILE_ID = 'base@0.1';
@@ -19,7 +20,7 @@ const folder = (name: string, type: string, title: string, description: string, 
   sections,
 });
 
-/** Folders `init` creates in a new wiki. */
+/** Base folders of the catalog (the `development` template requires all of them). */
 export const BASE_FOLDERS: Folder[] = [
   folder('overview', 'Overview', 'Overview', 'What the project is, its scope and its glossary.', ['Purpose', 'Scope']),
   folder('architecture', 'Architecture', 'Architecture', 'Structure, layers and dependency rules.', ['Overview', 'Rules', 'Why']),
@@ -38,15 +39,9 @@ export const OPTIONAL_FOLDERS: Folder[] = [
   folder('troubleshooting', 'Troubleshooting', 'Troubleshooting', 'Known problems and how to fix them.', ['Symptom', 'Cause', 'Fix']),
 ];
 
-/**
- * What a wiki requires by default. Only `init` (to seed a new profile) and the
- * migration of profiles written before `required_folders` existed read it: the
- * checks themselves read the profile.
- */
-export const BASE_REQUIRED = {
-  folders: BASE_FOLDERS.map((f) => f.name),
-  pages: ['overview/project.md', 'workflows/update-wiki.md'],
-};
+// What a profile written before `required_folders` existed required. Only the
+// migration reads it: the checks themselves read the profile.
+const BASE_REQUIRED = TEMPLATES.development as WikiTemplate;
 
 // Command-line alias for a type: "Pattern" -> "pattern".
 export const typeAlias = (type: string): string => type.toLowerCase().replace(/\s+/g, '-');

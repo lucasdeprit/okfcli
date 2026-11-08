@@ -63,6 +63,7 @@ const COMMANDS: Record<string, Command> = {
   init: {
     help: initHelp,
     options: {
+      template: { type: 'string' },
       with: { type: 'string' },
       language: { type: 'string' },
       'no-agents': { type: 'boolean' },
@@ -73,6 +74,7 @@ const COMMANDS: Record<string, Command> = {
       init({
         cwd,
         dir: positionals[0],
+        template: str(values.template),
         withFolders: str(values.with)?.split(',').map((s) => s.trim()).filter(Boolean) ?? [],
         language: str(values.language),
         agents: flag(values['no-agents']) ? [] : pickedAgents(values),

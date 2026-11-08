@@ -58,7 +58,14 @@ wiki/
 └── troubleshooting/   # optional
 ```
 
-The base profile is a catalog of folders with their names, `type` and sections. Which of them a wiki **requires** is set by the wiki itself in `required_folders` (section 7); the list above is what `okfcli init` writes there. Folder names do not depend on any technology. Whatever is specific to a project (a framework, an internal package) goes in pages, not in folders of the standard.
+The base profile is a catalog of folders with their names, `type` and sections. Which of them a wiki **requires** is set by the wiki itself in `required_folders` (section 7). `okfcli init` fills that in from a template:
+
+| Template | `required_folders` | `required_pages` |
+|---|---|---|
+| `development` (default) | `overview`, `architecture`, `patterns`, `conventions`, `workflows`, `testing` | `overview/project.md`, `workflows/update-wiki.md` |
+| `minimal` | `overview`, `workflows` | `overview/project.md`, `workflows/update-wiki.md` |
+
+A template only decides what is written when the wiki is created. Afterwards the profile is the only source: `validate` never reads the template, and the lists can be edited freely. Folder names do not depend on any technology. Whatever is specific to a project (a framework, an internal package) goes in pages, not in folders of the standard.
 
 ### General rules
 
@@ -151,6 +158,7 @@ Agents update the wiki. `workflows/update-wiki.md` defines the standard procedur
 
 ```yaml
 profile: base@0.1          # base profile and version
+template: development      # template the wiki was created from (informational)
 language: en               # language of the content (informational)
 required_folders:          # folders `validate` requires; remove the ones this wiki does not need
   - overview
@@ -205,7 +213,7 @@ Every rule has a stable id that can be used in `severity`.
 
 | Command | What it does |
 |---|---|
-| `init` | Creates the wiki with the required folders and pages, the indexes and `.okf-profile.yaml`; on an existing wiki it only refreshes the agent files and completes the profile |
+| `init` | Creates the wiki from a template (`--template development\|minimal`) with its required folders and pages, the indexes and `.okf-profile.yaml`; on an existing wiki it only refreshes the agent files and completes the profile |
 | `new <type> <name>` | Creates a page with its template and frontmatter and registers it in the index |
 | `validate` | Runs the checks of section 8, including which pages nobody has reviewed or that changed after being verified, with a review summary; `--fix` repairs the mechanical issues (profile keys, required folders and pages, section skeletons, indexes) |
 | `verify <path>` | Records a review in `verified` (`--by <actor>`, one entry per actor) with a hash of the content. Refuses pages with unfilled TODOs unless `--force` |

@@ -1,16 +1,17 @@
 import { existsSync, mkdirSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { stringify } from 'yaml';
-import { BASE_REQUIRED, OPTIONAL_FOLDERS, PROFILE_FILE, PROFILE_ID, loadProfile, writeMissingRequired } from '../core/profile.js';
+import { OPTIONAL_FOLDERS, PROFILE_FILE, PROFILE_ID, loadProfile, writeMissingRequired } from '../core/profile.js';
 import { regenerateIndexes } from '../wiki/indexer.js';
 import { requiredPageTemplates } from '../generate/templates.js';
+import { DEFAULT_TEMPLATE, TEMPLATES, getTemplate, type WikiTemplate } from '../core/wiki-templates.js';
 import { writeAgentFiles } from '../generate/agents.js';
 import { AGENT_NAMES, AGENT_TARGETS, DEFAULT_AGENTS, type AgentName } from '../generate/targets.js';
 import { findWikiRoot } from '../wiki/root.js';
 import { UserError, toPosix, writeText } from '../core/util.js';
 import type { CommandResult, Folder, AgentFileResult } from '../core/types.js';
 
-export const initHelp = `okfcli init [folder] [--with features,modules] [--language en] ${AGENT_NAMES.map((n) => `[--${n}]`).join(' ')} [--no-agents]
+export const initHelp = `okfcli init [folder] [--template development] [--with features,modules] [--language en] ${AGENT_NAMES.map((n) => `[--${n}]`).join(' ')} [--no-agents]
 
 Creates a wiki with the base profile (in ./wiki by default) and the files
 that connect it to your coding agents, relative to the current directory:
@@ -25,6 +26,8 @@ files, so files of an agent you stop passing stay where they are.
 Run it again in a project that already has a wiki to refresh those files (for
 example after upgrading okfcli). It never touches the wiki pages; if the profile
 lacks required_folders or required_pages it writes them.
+  --template   what the new wiki requires (default: ${DEFAULT_TEMPLATE}); it is written to the profile, where you can edit it:
+${Object.values(TEMPLATES).map((t) => `                 ${t.name.padEnd(12)} ${t.description}`).join('\n')}
   --with       optional folders to create now: ${OPTIONAL_FOLDERS.map((f) => f.name).join(', ')}
   --language   language of the wiki content, informational only (default: en)
   --no-agents  do not generate the agent files`;
@@ -41,14 +44,14 @@ function findExisting(cwd: string, dir: string | undefined): string | null {
   }
 }
 
-function createWiki(root: string, withFolders: string[], language: string): string[] {
+function createWiki(root: string, template: WikiTemplate, withFolders: string[], language: string): string[] {
   const known = new Map<string, Folder>(OPTIONAL_FOLDERS.map((f) => [f.name, f]));
   for (const name of withFolders) {
     if (!known.has(name)) {
       throw new UserError(`"${name}" is not an optional folder. Options: ${[...known.keys()].join(', ')}.`);
     }
   }
-  const profileText = `# okfcli profile of this wiki. See https://github.com/lucasdeprit/okfcli/blob/main/SPEC.md\n${stringify({ profile: PROFILE_ID, language, required_folders: BASE_REQUIRED.folders, required_pages: BASE_REQUIRED.pages, extra_folders: [] })}`;
+  const profileText = `# okfcli profile of this wiki. See https://github.com/lucasdeprit/okfcli/blob/main/SPEC.md\n${stringify({ profile: PROFILE_ID, template: template.name, language, required_folders: template.folders, required_pages: template.pages, extra_folders: [] })}`;
   writeText(join(root, PROFILE_FILE), profileText);
 
   const created = [PROFILE_FILE];
@@ -69,6 +72,8 @@ function createWiki(root: string, withFolders: string[], language: string): stri
 export interface InitOptions {
   cwd: string;
   dir?: string | undefined;
+  /** Template for a new wiki (see wiki-templates.ts). Default: development. */
+  template?: string | undefined;
   withFolders?: string[];
   language?: string | undefined;
   /** Agents to connect. Default: Copilot. An empty list generates no agent files. */
@@ -76,17 +81,21 @@ export interface InitOptions {
   version: string;
 }
 
-export function init({ cwd, dir, withFolders = [], language = 'en', agents = DEFAULT_AGENTS, version }: InitOptions): CommandResult {
+export function init({ cwd, dir, template, withFolders = [], language = 'en', agents = DEFAULT_AGENTS, version }: InitOptions): CommandResult {
   const existing = findExisting(cwd, dir);
   if (existing && withFolders.length) {
     throw new UserError('A wiki already exists here: --with only applies when creating one. Add folders by creating pages with "okfcli new".');
   }
+  if (existing && template !== undefined) {
+    throw new UserError('A wiki already exists here: --template only applies when creating one. Edit required_folders and required_pages in .okf-profile.yaml instead.');
+  }
+  const chosen = getTemplate(template ?? DEFAULT_TEMPLATE);
   const root = existing ?? resolve(cwd, dir ?? 'wiki');
   const wikiRel = toPosix(relative(cwd, root)) || '.';
 
-  const created = existing ? [] : createWiki(root, withFolders, language);
+  const created = existing ? [] : createWiki(root, chosen, withFolders, language);
   const migrated = existing ? writeMissingRequired(root) : [];
-  const agentFiles: AgentFileResult[] = agents.length ? writeAgentFiles({ projectRoot: cwd, wiki: wikiRel, profile: loadProfile(root), version, agents }) : [];
+  const agentFiles: AgentFileResult[] = agents.length ? writeAgentFiles({ projectRoot: cwd, wiki: wikiRel, wikiRoot: root, profile: loadProfile(root), version, agents }) : [];
 
   const lines = [];
   if (existing) {

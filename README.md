@@ -40,7 +40,7 @@ npx okfcli init docs/wiki --claude
 
 | Command | What it does |
 |---|---|
-| `okfcli init [folder]` | Create the wiki (default `./wiki`) and connect it to your coding agents (Copilot by default; `--claude`, `--codex`, `--opencode`, `--cursor`) |
+| `okfcli init [folder]` | Create the wiki (default `./wiki`) and connect it to your coding agents (Copilot by default; `--claude`, `--codex`, `--opencode`, `--cursor`). `--template minimal` creates only the two required pages |
 | `okfcli new <type> <name> --description "..."` | Create a page from its template and add it to the index |
 | `okfcli validate [--fix]` | Check the wiki and list what nobody has reviewed. `--fix` repairs the mechanical issues |
 | `okfcli verify <path> --by human:<id>` | Mark a page as reviewed |
@@ -72,7 +72,7 @@ Pin a version with `npm install -g okfcli@0.1.0`. To upgrade, install again, the
 ```
 docs/wiki/
 ├── index.md
-├── .okf-profile.yaml     settings: extra folders, rule severities
+├── .okf-profile.yaml     settings: required folders and pages, extra folders, rule severities
 ├── overview/             what the project is
 ├── architecture/         structure and rules
 ├── patterns/             how we implement things
@@ -81,6 +81,8 @@ docs/wiki/
 ├── testing/              how we test
 └── (features/ modules/ interfaces/ operations/ troubleshooting/)  optional, created by `okfcli new`
 ```
+
+This is the `development` template, the default. For anything that is not a software project, `okfcli init --template minimal` creates just `overview/project.md` and `workflows/update-wiki.md`. Which folders and pages are required is written in `.okf-profile.yaml`, so you can edit it later.
 
 Every folder has an `index.md`, generated for you. Every page has `type`, `title` and `description`, plus the sections its type requires.
 
