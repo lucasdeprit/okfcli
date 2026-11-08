@@ -7,11 +7,13 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- `okfcli init --template <name>` chooses what a new wiki requires: `development` (default, the structure used so far) or `minimal` (only `overview/project.md` and `workflows/update-wiki.md`). The choice is written to the profile as `template`, informational, along with `required_folders` and `required_pages`, which are what `validate` reads.
 - `required_folders` and `required_pages` in `.okf-profile.yaml`: each wiki now decides which folders and pages `validate` requires. `init` writes the base ones, so the default behaviour is unchanged, and a wiki can drop (for example) `conventions` or `testing`, or require a page of its own. A folder that is no longer required is still recognized: its pages keep being checked against its `type` and sections.
 - `profile.migrate` warning, for profiles written before those keys existed. Until the keys are written they are read as requiring the base ones. `validate --fix` and `init` write them, keeping comments and the other keys.
 
 ### Changed
 - The rule `structure.core-folder` is now `structure.required-folder`. A `severity` override under the old name no longer applies.
+- The update skill lists the folders the wiki has (plus `extra_folders`) instead of the whole catalog, so a minimal wiki does not advertise folders it lacks.
 - The consult skill no longer lists folders: it sends the agent to the wiki's `index.md`, so it stays correct when a wiki requires other folders.
 
 ### Removed
