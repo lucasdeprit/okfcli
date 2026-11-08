@@ -1,10 +1,40 @@
-# okfcli
+<div align="center">
 
-[![npm](https://img.shields.io/npm/v/okfcli)](https://www.npmjs.com/package/okfcli)
-[![CI](https://github.com/lucasdeprit/okfcli/actions/workflows/ci.yml/badge.svg)](https://github.com/lucasdeprit/okfcli/actions/workflows/ci.yml)
-[![license](https://img.shields.io/npm/l/okfcli)](LICENSE)
+<img src="assets/banner.svg" alt="okfcli — project wikis your coding agents can trust" width="100%">
 
-Create and maintain project wikis in [Open Knowledge Format (OKF)](https://github.com/GoogleCloudPlatform/open-knowledge-format), with the same structure in every project.
+<br>
+
+[![npm](https://img.shields.io/npm/v/okfcli?style=for-the-badge&color=7c3aed)](https://www.npmjs.com/package/okfcli)
+[![CI](https://img.shields.io/github/actions/workflow/status/lucasdeprit/okfcli/ci.yml?style=for-the-badge&label=CI)](https://github.com/lucasdeprit/okfcli/actions/workflows/ci.yml)
+[![license](https://img.shields.io/npm/l/okfcli?style=for-the-badge&color=0ea5e9)](LICENSE)
+[![node](https://img.shields.io/node/v/okfcli?style=for-the-badge&color=22c55e)](#install)
+
+**Create and maintain project wikis in [Open Knowledge Format (OKF)](https://github.com/GoogleCloudPlatform/open-knowledge-format), with the same structure in every project.**
+
+[Quick start](#quick-start) · [Commands](#commands) · [Agents](#agents) · [Spec](SPEC.md) · [Contributing](CONTRIBUTING.md)
+
+</div>
+
+---
+
+## Why okfcli
+
+| | |
+|---|---|
+| 🗂️ **Same structure everywhere** | Folders, indexes and page skeletons generated for you. Nobody edits `index.md` by hand. |
+| 🤖 **Agent-ready** | One flag connects Copilot, Claude Code, Codex, OpenCode or Cursor, with consult/update/review skills. |
+| ✅ **Human-reviewed** | A page is unreviewed until someone verifies it. Changed after review? `validate` flags it as outdated. |
+| 🔍 **Checkable** | `okfcli validate` enforces the [spec](SPEC.md); `--fix` repairs the mechanical issues. `--json` for CI. |
+
+## Quick start
+
+<p align="center">
+  <img src="assets/demo.svg" alt="okfcli terminal demo" width="85%">
+</p>
+
+```bash
+npx okfcli init docs/wiki --claude
+```
 
 ## Commands
 
