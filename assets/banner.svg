@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="320" viewBox="0 0 1280 320" role="img" aria-label="okfcli — project wikis your agents can trust">
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="320" viewBox="0 0 1280 320" role="img" aria-label="okfcli — create and maintain project wikis in Open Knowledge Format">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#0b1020"/><stop offset="1" stop-color="#1a1440"/>
@@ -23,8 +23,8 @@
   </g>
 
   <text x="262" y="156" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="84" font-weight="700" fill="#f8fafc">okfcli</text>
-  <text x="264" y="204" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="30" fill="url(#accent)" font-weight="600">Project wikis your coding agents can trust.</text>
-  <text x="264" y="244" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="20" fill="#94a3b8">Same structure in every project · Open Knowledge Format</text>
+  <text x="264" y="204" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="30" fill="url(#accent)" font-weight="600">Create and maintain project wikis.</text>
+  <text x="264" y="244" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="20" fill="#94a3b8">Structure · Validation · Review · Open Knowledge Format</text>
 
   <!-- floating page cards -->
   <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="15">

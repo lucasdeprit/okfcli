@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-08
+
 ### Added
 - `okfcli init --template <name>` chooses what a new wiki requires: `development` (default, the structure used so far) or `minimal` (only `overview/project.md` and `workflows/update-wiki.md`). The choice is written to the profile as `template`, informational, along with `required_folders` and `required_pages`, which are what `validate` reads.
 - `required_folders` and `required_pages` in `.okf-profile.yaml`: each wiki now decides which folders and pages `validate` requires. `init` writes the base ones, so the default behaviour is unchanged, and a wiki can drop (for example) `conventions` or `testing`, or require a page of its own. A folder that is no longer required is still recognized: its pages keep being checked against its `type` and sections.
@@ -15,6 +17,8 @@ All notable changes to this project are documented here. The format follows
 - The rule `structure.core-folder` is now `structure.required-folder`. A `severity` override under the old name no longer applies.
 - The update skill lists the folders the wiki has (plus `extra_folders`) instead of the whole catalog, so a minimal wiki does not advertise folders it lacks.
 - The consult skill no longer lists folders: it sends the agent to the wiki's `index.md`, so it stays correct when a wiki requires other folders.
+
+- The README is restructured (what it is, a three-step quick start, validation and review, agent compatibility) and a Spanish version, `README.es.md`, is added. `assets/demo.svg` is regenerated from the real output of `okfcli init` and `okfcli new`, and the banner tagline is neutral.
 
 ### Removed
 - `structure.testing-page` and the `testing/strategy.md` scaffold. `testing/` is now a folder like any other: when required, it only has to exist.
