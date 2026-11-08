@@ -16,8 +16,7 @@ const goodPage = (type: string, sections: string[], extra = ''): string =>
 
 async function cleanWiki(dir: string): Promise<void> {
   await okfcli(dir, 'init');
-  writeFileSync(wikiFile(dir, 'testing/strategy.md'), goodPage('Testing', ['Scope', 'How to run', 'Rules'], '\nSee [project](/overview/project.md).\n'));
-  writeFileSync(wikiFile(dir, 'overview/project.md'), goodPage('Overview', ['Purpose', 'Scope'], '\nTesting: [strategy](/testing/strategy.md).\n'));
+  writeFileSync(wikiFile(dir, 'overview/project.md'), goodPage('Overview', ['Purpose', 'Scope']));
   writeFileSync(wikiFile(dir, 'workflows/update-wiki.md'), goodPage('Workflow', ['Goal', 'Steps']));
   await okfcli(dir, 'validate', '--fix');
 }
@@ -29,7 +28,7 @@ test('a fresh wiki has no errors, only warnings about unreviewed and unfilled pa
     assert.equal(res.ok, true);
     assert.equal(res.code, 0);
     assert.equal(res.errors, 0);
-    assert.ok(rules(res).includes('page.todo:testing/strategy.md'));
+    assert.ok(rules(res).includes('page.todo:overview/project.md'));
   });
 });
 
@@ -97,13 +96,13 @@ test('detects broken links and unknown folders', async () => {
   });
 });
 
-test('detects missing core folders and index frontmatter', async () => {
+test('detects missing required folders and index frontmatter', async () => {
   await withTempDir(async (dir) => {
     await cleanWiki(dir);
     rmSync(wikiFile(dir, 'conventions'), { recursive: true });
     writeFileSync(wikiFile(dir, 'patterns/index.md'), '---\ntitle: nope\n---\n# Patterns\n');
     const r = rules(await issues(dir));
-    assert.ok(r.includes('structure.core-folder:conventions/'));
+    assert.ok(r.includes('structure.required-folder:conventions/'));
     assert.ok(r.includes('okf.index:patterns/index.md'));
   });
 });
@@ -126,16 +125,14 @@ test('--fix repairs folders, required pages, sections and indexes, and reports w
     await cleanWiki(dir);
     rmSync(wikiFile(dir, 'conventions'), { recursive: true });
     rmSync(wikiFile(dir, 'workflows/update-wiki.md'));
-    rmSync(wikiFile(dir, 'testing/strategy.md'));
     writeFileSync(wikiFile(dir, 'patterns/short.md'), '---\ntype: Pattern\ntitle: Short\ndescription: Short one.\n---\n# How\n\nDone.\n');
     const res = await issues(dir, '--fix');
     assert.ok(res.fixed.some((f: string) => f.includes('Created folder conventions/')));
     assert.ok(res.fixed.some((f: string) => f.includes('Recreated workflows/update-wiki.md')));
-    assert.ok(res.fixed.some((f: string) => f.includes('Created testing/strategy.md')));
     assert.ok(res.fixed.some((f: string) => f.includes('patterns/short.md')));
     assert.match(readWiki(dir, 'patterns/short.md'), /# When to use\n\n<!-- TODO: When to use -->/);
     const r = rules(res);
-    assert.ok(!r.some((x: string) => x.startsWith('structure.core-folder')));
+    assert.ok(!r.some((x: string) => x.startsWith('structure.required-folder')));
     assert.ok(!r.some((x: string) => x.startsWith('page.sections')));
     assert.ok(!r.some((x: string) => x.startsWith('index.out-of-date')));
     assert.ok(r.includes('page.todo:patterns/short.md'), 'content problems remain for the agent');
@@ -146,11 +143,11 @@ test('--fix repairs folders, required pages, sections and indexes, and reports w
 test('human output lists rule, file, message and fix, and a summary line', async () => {
   await withTempDir(async (dir) => {
     await okfcli(dir, 'init');
-    rmSync(wikiFile(dir, 'testing/strategy.md'));
+    rmSync(wikiFile(dir, 'conventions'), { recursive: true });
     const r = await okfcli(dir, 'validate');
     assert.equal(r.code, 1);
-    assert.match(r.out, /error\s+structure\.testing-page\s+testing\//);
-    assert.match(r.out, /scaffold testing\/strategy\.md/);
+    assert.match(r.out, /error\s+structure\.required-folder\s+conventions\//);
+    assert.match(r.out, /remove it from required_folders/);
     assert.match(r.out, /\d+ errors?, \d+ warnings?\. Validation failed\./);
   });
 });

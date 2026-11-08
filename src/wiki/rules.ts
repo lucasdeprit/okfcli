@@ -1,10 +1,9 @@
 import { existsSync } from 'node:fs';
 import { join, posix } from 'node:path';
-import { CORE_FOLDERS, folderByName } from '../core/profile.js';
+import { folderByName } from '../core/profile.js';
 import { loadWiki, missingSections, scanBody } from './pages.js';
 import { regenerateIndexes } from './indexer.js';
 import { KEBAB } from '../core/util.js';
-import { requiredPages } from '../generate/templates.js';
 import { countTodos, trustState } from '../core/trust.js';
 import type { Issue, Profile } from '../core/types.js';
 
@@ -12,9 +11,8 @@ export const DEFAULT_SEVERITY: Record<string, 'error' | 'warning'> = {
   'okf.frontmatter': 'error',
   'okf.type': 'error',
   'okf.index': 'error',
-  'structure.core-folder': 'error',
+  'structure.required-folder': 'error',
   'structure.required-page': 'error',
-  'structure.testing-page': 'error',
   'structure.unknown-folder': 'warning',
   'page.type': 'error',
   'page.sections': 'error',
@@ -28,6 +26,7 @@ export const DEFAULT_SEVERITY: Record<string, 'error' | 'warning'> = {
   'index.out-of-date': 'error',
   'link.broken': 'warning',
   'page.orphan': 'warning',
+  'profile.migrate': 'warning',
 };
 
 const STATUSES = ['draft', 'stable', 'deprecated'];
@@ -45,18 +44,18 @@ export function validateWiki(root: string, profile: Profile): Issue[] {
   const wiki = loadWiki(root);
 
   // Structure
-  for (const folder of CORE_FOLDERS) {
-    if (!existsSync(join(root, folder.name))) {
-      add('structure.core-folder', `${folder.name}/`, `Core folder "${folder.name}/" is missing.`, 'Run "okfcli validate --fix" to create it.');
+  if (profile.migrated) {
+    add('profile.migrate', '.okf-profile.yaml', 'The profile has no required_folders or required_pages, so the base ones are assumed.', 'Run "okfcli validate --fix" to write them into the profile, then edit them to fit this wiki.');
+  }
+  for (const name of profile.requiredFolders) {
+    if (!existsSync(join(root, name))) {
+      add('structure.required-folder', `${name}/`, `Required folder "${name}/" is missing.`, 'Run "okfcli validate --fix" to create it, or remove it from required_folders in .okf-profile.yaml.');
     }
   }
-  for (const page of requiredPages()) {
-    if (!existsSync(join(root, page.path))) {
-      add('structure.required-page', page.path, `Required page ${page.path} is missing.`, 'Run "okfcli validate --fix" to recreate it.');
+  for (const path of profile.requiredPages) {
+    if (!existsSync(join(root, path))) {
+      add('structure.required-page', path, `Required page ${path} is missing.`, 'Run "okfcli validate --fix" to recreate it, or remove it from required_pages in .okf-profile.yaml.');
     }
-  }
-  if (existsSync(join(root, 'testing')) && !wiki.concepts.some((c) => c.folder === 'testing')) {
-    add('structure.testing-page', 'testing/', 'testing/ has no strategy page.', 'Run "okfcli validate --fix" to scaffold testing/strategy.md, or create one with "okfcli new testing <name>".');
   }
 
   // Names
@@ -141,7 +140,7 @@ export function validateWiki(root: string, profile: Profile): Issue[] {
       }
     }
   }
-  const entryPoints = new Set(requiredPages().map((p) => p.path));
+  const entryPoints = new Set(profile.requiredPages);
   for (const page of wiki.concepts) {
     if (page.data && !entryPoints.has(page.rel) && !linkedFrom.has(page.rel)) {
       add('page.orphan', page.rel, 'No other page links to this one.', 'Link it from a related page (for example the workflow or architecture page that uses it).');

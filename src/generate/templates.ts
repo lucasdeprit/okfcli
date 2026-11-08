@@ -1,6 +1,6 @@
-import { yamlScalar } from '../core/util.js';
-import { coreFolder } from '../core/profile.js';
-import type { Folder } from '../core/types.js';
+import { humanize, yamlScalar } from '../core/util.js';
+import { baseFolder, folderByName } from '../core/profile.js';
+import type { Folder, Profile } from '../core/types.js';
 
 export interface TemplatePage {
   path: string;
@@ -16,39 +16,36 @@ export function renderPage({ folder, title, description }: { folder: Pick<Folder
   return `${front.join('\n')}\n\n${sections.join('\n')}`;
 }
 
-// Scaffold of the testing strategy page. `init` and `validate --fix` create it
-// when testing/ has no page; it is not a required name, any testing page counts.
-export function testingStrategyPage(): TemplatePage {
-  return {
-    path: 'testing/strategy.md',
-    text: renderPage({ folder: coreFolder('testing'), title: 'Testing strategy', description: 'How testing is done in this project.' }),
-  };
-}
+// Pages okfcli knows how to write: the ones the base profile requires.
+const KNOWN_PAGES: Record<string, () => string> = {
+  'overview/project.md': () =>
+    renderPage({
+      folder: baseFolder('overview'),
+      title: 'Project',
+      description: 'What the project is and who it is for.',
+    }),
+  'workflows/update-wiki.md': () =>
+    [
+      renderPage({
+        folder: { type: 'Workflow', sections: [] },
+        title: 'Update the wiki',
+        description: 'When and how this wiki is updated.',
+      }).trimEnd(),
+      '',
+      UPDATE_WIKI_BODY,
+    ].join('\n'),
+};
 
-// Required core pages (SPEC.md section 3). Created by `init`.
-export function requiredPages(): TemplatePage[] {
-  return [
-    {
-      path: 'overview/project.md',
-      text: renderPage({
-        folder: coreFolder('overview'),
-        title: 'Project',
-        description: 'What the project is and who it is for.',
-      }),
-    },
-    {
-      path: 'workflows/update-wiki.md',
-      text: [
-        renderPage({
-          folder: { type: 'Workflow', sections: [] },
-          title: 'Update the wiki',
-          description: 'When and how this wiki is updated.',
-        }).trimEnd(),
-        '',
-        UPDATE_WIKI_BODY,
-      ].join('\n'),
-    },
-  ];
+// The pages the profile requires (`required_pages`), with the text to create them
+// from. A page okfcli does not know gets its folder's sections, unfilled.
+export function requiredPageTemplates(profile: Profile): TemplatePage[] {
+  return profile.requiredPages.map((path) => {
+    const known = KNOWN_PAGES[path];
+    if (known) return { path, text: known() };
+    const [folderName = '', ...rest] = path.slice(0, -3).split('/');
+    const folder = folderByName(profile, folderName) ?? { type: humanize(folderName), sections: [] };
+    return { path, text: renderPage({ folder, title: humanize(rest.join('-')), description: 'TODO: describe this page.' }) };
+  });
 }
 
 const UPDATE_WIKI_BODY = `# Goal

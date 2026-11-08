@@ -45,12 +45,12 @@ A wiki that breaks the profile but satisfies OKF is still valid OKF.
 wiki/
 ├── index.md
 ├── .okf-profile.yaml
-├── overview/          # core
-├── architecture/      # core
-├── patterns/          # core
-├── conventions/       # core
-├── workflows/         # core
-├── testing/           # core
+├── overview/          # required by default
+├── architecture/      # required by default
+├── patterns/          # required by default
+├── conventions/       # required by default
+├── workflows/         # required by default
+├── testing/           # required by default
 ├── features/          # optional
 ├── modules/           # optional
 ├── interfaces/        # optional
@@ -58,13 +58,13 @@ wiki/
 └── troubleshooting/   # optional
 ```
 
-Folder names are fixed and do not depend on any technology. Whatever is specific to a project (a framework, an internal package) goes in pages, not in folders of the standard.
+The base profile is a catalog of folders with their names, `type` and sections. Which of them a wiki **requires** is set by the wiki itself in `required_folders` (section 7); the list above is what `okfcli init` writes there. Folder names do not depend on any technology. Whatever is specific to a project (a framework, an internal package) goes in pages, not in folders of the standard.
 
 ### General rules
 
 - Every folder has an `index.md`.
 - File and folder names in `kebab-case`, without repeating the folder name (`modules/auth/core.md`, not `modules/auth/auth-core.md`).
-- Own folders can be added (declared in `extra_folders`); core folders cannot be removed or renamed.
+- Own folders can be added (declared in `extra_folders`) and any folder can be required or not through `required_folders`. A folder that is not required but exists is still recognized: its pages are checked against its `type` and sections. Base folders cannot be renamed.
 - There is no decisions folder. The reason for a rule lives in the `# Why` section of its page. What changes is edited in the page; the history is left to git. What stops applying is marked `status: deprecated`.
 - Page content can be in any language. The `type` names, frontmatter fields and required section names are in English.
 
@@ -88,9 +88,12 @@ A page may have more sections. Only these are required.
 
 ### Required pages
 
+The wiki lists them in `required_pages` (section 7). `okfcli init` writes these two, which any wiki needs whatever it is used for:
+
 - `overview/project.md`: what the project is.
 - `workflows/update-wiki.md`: when and how the wiki is updated (see section 6).
-- `testing/` must contain at least one testing strategy page (so `testing/index.md` links to it). `okfcli init` scaffolds `testing/strategy.md` (title, frontmatter and the required sections, unfilled); any page in `testing/` satisfies the rule, so a project may rename or replace it.
+
+Any other page can be listed too; `validate --fix` recreates it with the sections of its folder, unfilled. Listing a page requires its folder to be in the catalog or in `extra_folders`.
 
 ## 4. Frontmatter
 
@@ -149,6 +152,16 @@ Agents update the wiki. `workflows/update-wiki.md` defines the standard procedur
 ```yaml
 profile: base@0.1          # base profile and version
 language: en               # language of the content (informational)
+required_folders:          # folders `validate` requires; remove the ones this wiki does not need
+  - overview
+  - architecture
+  - patterns
+  - conventions
+  - workflows
+  - testing
+required_pages:            # pages `validate` requires
+  - overview/project.md
+  - workflows/update-wiki.md
 severity:                  # overrides the severity of a rule: error | warning | off
   frontmatter.verified: error
   frontmatter.verified-outdated: error
@@ -157,6 +170,8 @@ extra_folders:             # project-specific folders
     type: Mobile
     sections: ["# Summary"]
 ```
+
+`required_folders` and `required_pages` name entries of the catalog (or of `extra_folders`); anything else is an error. A profile written before these keys existed is read as requiring the base ones, `validate` warns with `profile.migrate`, and `validate --fix` or `init` write the keys into the file.
 
 ## 8. Checks (`validate`)
 
@@ -167,10 +182,10 @@ Every rule has a stable id that can be used in `severity`.
 | `okf.frontmatter` | Concept pages have parseable YAML frontmatter | error | |
 | `okf.type` | `type` is present and non-empty | error | |
 | `okf.index` | `index.md` has no frontmatter (the root one only `okf_version`) | error | |
-| `structure.core-folder` | Every core folder exists | error | yes |
-| `structure.required-page` | Required pages exist | error | yes |
-| `structure.testing-page` | `testing/` has at least one strategy page | error | yes (scaffolds `testing/strategy.md`) |
-| `structure.unknown-folder` | Pages live in a core, optional or declared folder | warning | |
+| `profile.migrate` | The profile has `required_folders` and `required_pages` | warning | yes (writes them) |
+| `structure.required-folder` | Every folder in `required_folders` exists | error | yes |
+| `structure.required-page` | Every page in `required_pages` exists | error | yes |
+| `structure.unknown-folder` | Pages live in a base, optional or declared folder | warning | |
 | `page.type` | `type` matches the type of the folder | error | |
 | `page.sections` | Required sections are present | error | yes |
 | `page.todo` | No unfilled `<!-- TODO -->` placeholders | warning | |
@@ -190,9 +205,9 @@ Every rule has a stable id that can be used in `severity`.
 
 | Command | What it does |
 |---|---|
-| `init` | Creates the wiki with the core, the indexes and `.okf-profile.yaml` |
+| `init` | Creates the wiki with the required folders and pages, the indexes and `.okf-profile.yaml`; on an existing wiki it only refreshes the agent files and completes the profile |
 | `new <type> <name>` | Creates a page with its template and frontmatter and registers it in the index |
-| `validate` | Runs the checks of section 8, including which pages nobody has reviewed or that changed after being verified, with a review summary; `--fix` repairs the mechanical issues (folders, required pages, section skeletons, indexes) |
+| `validate` | Runs the checks of section 8, including which pages nobody has reviewed or that changed after being verified, with a review summary; `--fix` repairs the mechanical issues (profile keys, required folders and pages, section skeletons, indexes) |
 | `verify <path>` | Records a review in `verified` (`--by <actor>`, one entry per actor) with a hash of the content. Refuses pages with unfilled TODOs unless `--force` |
 
 There are deliberately only four commands: people should not have to learn an ecosystem. Indexes are kept up to date by `new` and `validate --fix`, so there is no `index` command; the review state is part of `validate`, so there is no `status` command; the agent files are refreshed by running `init` again, so there is no `update` command.

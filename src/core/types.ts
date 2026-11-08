@@ -3,21 +3,27 @@ import type { WriteStatus } from './util.js';
 
 export type Severity = 'error' | 'warning' | 'off';
 
-/** A folder of the wiki: the base profile ones plus `extra_folders` from the profile. */
+/** A folder of the wiki: the base catalog ones plus `extra_folders` from the profile. */
 export interface Folder {
   name: string;
   type: string;
   title: string;
   description: string;
   sections: string[];
-  core: boolean;
   extra?: boolean;
 }
 
 export interface Profile {
   config: Record<string, unknown>;
   severity: Record<string, Severity>;
+  /** Every folder the wiki recognizes: the base catalog plus `extra_folders`. */
   folders: Folder[];
+  /** Folders `validate` requires (`required_folders`). */
+  requiredFolders: string[];
+  /** Pages `validate` requires (`required_pages`). */
+  requiredPages: string[];
+  /** The profile lacks `required_folders` or `required_pages`, so the base ones were assumed. */
+  migrated: boolean;
 }
 
 /** Parsed YAML frontmatter. Its values come from user files, so they are `unknown`. */

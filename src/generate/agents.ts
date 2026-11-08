@@ -45,9 +45,9 @@ export function skillFiles({ wiki, profile, version }: { wiki: string; profile: 
 
 The wiki lives in \`${wiki}/\`. Read only what the task needs.
 
-1. Read \`${wiki}/index.md\`. It lists the folders: overview, architecture, patterns, conventions, workflows, testing, and any optional ones (features, modules, interfaces, operations, troubleshooting).
+1. Read \`${wiki}/index.md\`. It lists the folders this wiki has, each with a description; the folders differ from one wiki to another, so do not assume any.
 2. Open the \`index.md\` of the folders that matter for the task, then the pages it points to.
-3. For "how do I do X" questions start with \`workflows/\`; each workflow links to the \`patterns/\` it relies on. Rules and structure are in \`architecture/\` and \`conventions/\`; how to run and write tests is in \`testing/\`.
+3. For "how do I do X" questions look for a workflow first: workflows link to the patterns they rely on. Rules and structure are usually under architecture and conventions, and how to run and write tests under testing, when the wiki has those folders.
 4. Follow what the pages say. If the wiki is silent or contradicts the code, say so instead of guessing, and propose a wiki update (skill \`okf-update-wiki\`).
 5. A page without a \`verified\` entry has not been reviewed by a person: use it, but flag the uncertainty when the answer depends on it.
 `,

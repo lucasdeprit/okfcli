@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { withTempDir, okfcli, readWiki, parseJson, type Json } from './helpers.js';
 
 
-test('init creates the core, indexes and required pages', async () => {
+test('init creates the required folders, indexes and required pages', async () => {
   await withTempDir(async (dir) => {
     const r = await okfcli(dir, 'init');
     assert.equal(r.code, 0);
@@ -15,8 +15,8 @@ test('init creates the core, indexes and required pages', async () => {
     assert.ok(existsSync(join(dir, 'wiki/.okf-profile.yaml')));
     assert.ok(existsSync(join(dir, 'wiki/overview/project.md')));
     assert.ok(existsSync(join(dir, 'wiki/workflows/update-wiki.md')));
-    assert.match(readWiki(dir, 'testing/strategy.md'), /^---\ntype: Testing\ntitle: Testing strategy\n/);
-    assert.match(readWiki(dir, 'testing/index.md'), /\[Testing strategy\]\(\/testing\/strategy\.md\)/);
+    assert.ok(!existsSync(join(dir, 'wiki/testing/strategy.md')), 'testing has no special page');
+    assert.match(readWiki(dir, '.okf-profile.yaml'), /required_folders:\n  - overview\n[\s\S]*  - testing\nrequired_pages:\n  - overview\/project\.md\n  - workflows\/update-wiki\.md\n/);
     assert.match(readWiki(dir, 'index.md'), /^---\nokf_version: "0.2"\n---\n# Index/);
     assert.match(readWiki(dir, 'overview/index.md'), /\[Project\]\(\/overview\/project\.md\) - What the project is/);
     assert.ok(!existsSync(join(dir, 'wiki/log.md')), 'no log.md is created');

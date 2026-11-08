@@ -1,6 +1,6 @@
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { parse } from 'yaml';
+import { parse, parseDocument } from 'yaml';
 import { KEBAB, UserError } from './util.js';
 import type { Folder, Profile, Severity } from './types.js';
 
@@ -9,34 +9,44 @@ export const PROFILE_FILE = '.okf-profile.yaml';
 export const OKF_VERSION = '0.2';
 const SEVERITIES: Severity[] = ['error', 'warning', 'off'];
 
-// Base profile folders. Names and `type` are fixed; see SPEC.md section 3.
-const folder = (core: boolean, name: string, type: string, title: string, description: string, sections: string[]): Folder => ({
+// Catalog of the base profile folders: their names, `type` and sections. Which of
+// them a wiki requires is not decided here but by `required_folders` in its profile.
+const folder = (name: string, type: string, title: string, description: string, sections: string[]): Folder => ({
   name,
   type,
   title,
   description,
   sections,
-  core,
 });
-const core = (...args: [string, string, string, string, string[]]): Folder => folder(true, ...args);
-const optional = (...args: [string, string, string, string, string[]]): Folder => folder(false, ...args);
 
-export const CORE_FOLDERS: Folder[] = [
-  core('overview', 'Overview', 'Overview', 'What the project is, its scope and its glossary.', ['Purpose', 'Scope']),
-  core('architecture', 'Architecture', 'Architecture', 'Structure, layers and dependency rules.', ['Overview', 'Rules', 'Why']),
-  core('patterns', 'Pattern', 'Patterns', 'How each thing is implemented, with a real example.', ['When to use', 'How', 'Example', 'Why']),
-  core('conventions', 'Convention', 'Conventions', 'Style, naming and working conventions.', ['Rule', 'Examples']),
-  core('workflows', 'Workflow', 'Workflows', 'How we work: setup, build, PRs, releases, onboarding.', ['Goal', 'Steps']),
-  core('testing', 'Testing', 'Testing', 'Testing strategy, how to run it and rules.', ['Scope', 'How to run', 'Rules']),
+/** Folders `init` creates in a new wiki. */
+export const BASE_FOLDERS: Folder[] = [
+  folder('overview', 'Overview', 'Overview', 'What the project is, its scope and its glossary.', ['Purpose', 'Scope']),
+  folder('architecture', 'Architecture', 'Architecture', 'Structure, layers and dependency rules.', ['Overview', 'Rules', 'Why']),
+  folder('patterns', 'Pattern', 'Patterns', 'How each thing is implemented, with a real example.', ['When to use', 'How', 'Example', 'Why']),
+  folder('conventions', 'Convention', 'Conventions', 'Style, naming and working conventions.', ['Rule', 'Examples']),
+  folder('workflows', 'Workflow', 'Workflows', 'How we work: setup, build, PRs, releases, onboarding.', ['Goal', 'Steps']),
+  folder('testing', 'Testing', 'Testing', 'Testing strategy, how to run it and rules.', ['Scope', 'How to run', 'Rules']),
 ];
 
+/** Folders of the catalog that `init` only creates on request (`--with`). */
 export const OPTIONAL_FOLDERS: Folder[] = [
-  optional('features', 'Feature', 'Features', 'Business capabilities and flows.', ['Summary', 'Behavior']),
-  optional('modules', 'Module', 'Modules', 'Internal packages and components.', ['Responsibility', 'Public API']),
-  optional('interfaces', 'Interface', 'Interfaces', 'External contracts: APIs, events, integrations.', ['Contract', 'Consumers']),
-  optional('operations', 'Operation', 'Operations', 'Deployment, runbooks and incidents.', ['When', 'Steps']),
-  optional('troubleshooting', 'Troubleshooting', 'Troubleshooting', 'Known problems and how to fix them.', ['Symptom', 'Cause', 'Fix']),
+  folder('features', 'Feature', 'Features', 'Business capabilities and flows.', ['Summary', 'Behavior']),
+  folder('modules', 'Module', 'Modules', 'Internal packages and components.', ['Responsibility', 'Public API']),
+  folder('interfaces', 'Interface', 'Interfaces', 'External contracts: APIs, events, integrations.', ['Contract', 'Consumers']),
+  folder('operations', 'Operation', 'Operations', 'Deployment, runbooks and incidents.', ['When', 'Steps']),
+  folder('troubleshooting', 'Troubleshooting', 'Troubleshooting', 'Known problems and how to fix them.', ['Symptom', 'Cause', 'Fix']),
 ];
+
+/**
+ * What a wiki requires by default. Only `init` (to seed a new profile) and the
+ * migration of profiles written before `required_folders` existed read it: the
+ * checks themselves read the profile.
+ */
+export const BASE_REQUIRED = {
+  folders: BASE_FOLDERS.map((f) => f.name),
+  pages: ['overview/project.md', 'workflows/update-wiki.md'],
+};
 
 // Command-line alias for a type: "Pattern" -> "pattern".
 export const typeAlias = (type: string): string => type.toLowerCase().replace(/\s+/g, '-');
@@ -85,23 +95,71 @@ export function loadProfile(wikiRoot: string): Profile {
       title: f.title ? String(f.title) : type,
       description: f.description ? String(f.description) : '',
       sections,
-      core: false,
       extra: true,
     };
   });
-  return {
-    config,
-    severity: severity as Record<string, Severity>,
-    folders: [...CORE_FOLDERS, ...OPTIONAL_FOLDERS, ...extra],
-  };
+  const folders = [...BASE_FOLDERS, ...OPTIONAL_FOLDERS, ...extra];
+  const known = new Set(folders.map((f) => f.name));
+
+  // A profile written before these keys existed requires what the base profile did.
+  const migrated = missingRequiredKeys(config).length > 0;
+  const requiredFolders = stringList(config, 'required_folders', BASE_REQUIRED.folders);
+  for (const name of requiredFolders) {
+    if (!known.has(name)) {
+      throw new UserError(`${PROFILE_FILE}: required_folders has "${name}", which is not a base folder or declared in extra_folders. Known: ${[...known].join(', ')}.`);
+    }
+  }
+  const requiredPages = stringList(config, 'required_pages', BASE_REQUIRED.pages);
+  for (const path of requiredPages) {
+    const segments = path.endsWith('.md') ? path.slice(0, -3).split('/') : [];
+    const valid = segments.length >= 2 && segments.every((seg) => KEBAB.test(seg)) && segments[segments.length - 1] !== 'index';
+    if (!valid) {
+      throw new UserError(`${PROFILE_FILE}: required_pages entry "${path}" must look like "folder/page-name.md" (kebab-case, not index.md).`);
+    }
+    if (!known.has(segments[0] as string)) {
+      throw new UserError(`${PROFILE_FILE}: required_pages entry "${path}" is in "${segments[0]}/", which is not a base folder or declared in extra_folders.`);
+    }
+  }
+  return { config, severity: severity as Record<string, Severity>, folders, requiredFolders, requiredPages, migrated };
+}
+
+const REQUIRED_KEYS = { required_folders: BASE_REQUIRED.folders, required_pages: BASE_REQUIRED.pages };
+
+const missingRequiredKeys = (config: Record<string, unknown>): string[] =>
+  Object.keys(REQUIRED_KEYS).filter((key) => config[key] === undefined || config[key] === null);
+
+// A list of strings in the profile, or `fallback` when the key is absent.
+function stringList(config: Record<string, unknown>, key: string, fallback: string[]): string[] {
+  const value = config[key];
+  if (value === undefined || value === null) return fallback;
+  if (!Array.isArray(value) || value.some((v) => typeof v !== 'string')) {
+    throw new UserError(`${PROFILE_FILE}: "${key}" must be a list of strings.`);
+  }
+  return [...new Set(value as string[])];
+}
+
+/**
+ * Writes `required_folders` / `required_pages` into a profile that lacks them,
+ * with what the base profile required, keeping comments and every other key.
+ * Returns the keys it added.
+ */
+export function writeMissingRequired(wikiRoot: string): string[] {
+  const file = join(wikiRoot, PROFILE_FILE);
+  const doc = parseDocument(readFileSync(file, 'utf8'));
+  const added = missingRequiredKeys((doc.toJS() ?? {}) as Record<string, unknown>);
+  if (!added.length) return [];
+  if (doc.contents === null) doc.contents = doc.createNode({}) as unknown as NonNullable<typeof doc.contents>;
+  for (const key of added) doc.set(key, REQUIRED_KEYS[key as keyof typeof REQUIRED_KEYS]);
+  writeFileSync(file, String(doc));
+  return added;
 }
 
 export const folderByName = (profile: Profile, name: string): Folder | undefined => profile.folders.find((f) => f.name === name);
 
-/** One of the base profile folders; they always exist. */
-export function coreFolder(name: string): Folder {
-  const folder = CORE_FOLDERS.find((f) => f.name === name);
-  if (!folder) throw new Error(`Unknown core folder: ${name}`);
+/** One of the base catalog folders, by name. */
+export function baseFolder(name: string): Folder {
+  const folder = [...BASE_FOLDERS, ...OPTIONAL_FOLDERS].find((f) => f.name === name);
+  if (!folder) throw new Error(`Unknown base folder: ${name}`);
   return folder;
 }
 

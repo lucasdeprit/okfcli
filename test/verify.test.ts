@@ -155,11 +155,11 @@ test('validate summarises the review state and skips deprecated pages', async ()
     writeFileSync(wikiFile(dir, 'patterns/old.md'), filled('status: deprecated\n').replace('title: State', 'title: Old'));
     await okfcli(dir, 'validate', '--fix');
     const r = await check(dir);
-    assert.deepEqual(r.review, { pages: 5, deprecated: 1, 'human-reviewed': 1, 'machine-confirmed': 0, unverified: 3, outdated: 0 });
+    assert.deepEqual(r.review, { pages: 4, deprecated: 1, 'human-reviewed': 1, 'machine-confirmed': 0, unverified: 2, outdated: 0 });
     assert.equal(reviewIssue(r, 'patterns/old.md'), undefined, 'deprecated pages are not asked to be reviewed');
-    assert.equal(reviewIssue(r, 'testing/strategy.md'), 'frontmatter.verified');
+    assert.equal(reviewIssue(r, 'overview/project.md'), 'frontmatter.verified');
     const text = (await okfcli(dir, 'validate')).out;
-    assert.match(text, /Review: 1 human-reviewed, 0 machine-confirmed, 3 unverified, 0 outdated/);
+    assert.match(text, /Review: 1 human-reviewed, 0 machine-confirmed, 2 unverified, 0 outdated/);
   });
 });
 

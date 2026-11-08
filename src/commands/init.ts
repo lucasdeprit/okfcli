@@ -1,9 +1,9 @@
 import { existsSync, mkdirSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { stringify } from 'yaml';
-import { CORE_FOLDERS, OPTIONAL_FOLDERS, PROFILE_FILE, PROFILE_ID, loadProfile } from '../core/profile.js';
+import { BASE_REQUIRED, OPTIONAL_FOLDERS, PROFILE_FILE, PROFILE_ID, loadProfile, writeMissingRequired } from '../core/profile.js';
 import { regenerateIndexes } from '../wiki/indexer.js';
-import { requiredPages, testingStrategyPage } from '../generate/templates.js';
+import { requiredPageTemplates } from '../generate/templates.js';
 import { writeAgentFiles } from '../generate/agents.js';
 import { AGENT_NAMES, AGENT_TARGETS, DEFAULT_AGENTS, type AgentName } from '../generate/targets.js';
 import { findWikiRoot } from '../wiki/root.js';
@@ -12,7 +12,7 @@ import type { CommandResult, Folder, AgentFileResult } from '../core/types.js';
 
 export const initHelp = `okfcli init [folder] [--with features,modules] [--language en] ${AGENT_NAMES.map((n) => `[--${n}]`).join(' ')} [--no-agents]
 
-Creates a wiki with the base profile core (in ./wiki by default) and the files
+Creates a wiki with the base profile (in ./wiki by default) and the files
 that connect it to your coding agents, relative to the current directory:
   a pointer block to the wiki in the instructions file the agent loads
   okf-consult-wiki, okf-update-wiki, okf-review-wiki skills (consult, update and review the wiki)
@@ -23,7 +23,8 @@ Flags can be combined (okfcli init --claude --codex). okfcli never deletes
 files, so files of an agent you stop passing stay where they are.
 
 Run it again in a project that already has a wiki to refresh those files (for
-example after upgrading okfcli). It never touches the wiki pages.
+example after upgrading okfcli). It never touches the wiki pages; if the profile
+lacks required_folders or required_pages it writes them.
   --with       optional folders to create now: ${OPTIONAL_FOLDERS.map((f) => f.name).join(', ')}
   --language   language of the wiki content, informational only (default: en)
   --no-agents  do not generate the agent files`;
@@ -47,19 +48,21 @@ function createWiki(root: string, withFolders: string[], language: string): stri
       throw new UserError(`"${name}" is not an optional folder. Options: ${[...known.keys()].join(', ')}.`);
     }
   }
-  const profileText = `# okfcli profile of this wiki. See https://github.com/lucasdeprit/okfcli/blob/main/SPEC.md\n${stringify({ profile: PROFILE_ID, language, extra_folders: [] })}`;
+  const profileText = `# okfcli profile of this wiki. See https://github.com/lucasdeprit/okfcli/blob/main/SPEC.md\n${stringify({ profile: PROFILE_ID, language, required_folders: BASE_REQUIRED.folders, required_pages: BASE_REQUIRED.pages, extra_folders: [] })}`;
   writeText(join(root, PROFILE_FILE), profileText);
 
   const created = [PROFILE_FILE];
-  for (const folder of [...CORE_FOLDERS, ...withFolders.map((n) => known.get(n) as Folder)]) {
-    mkdirSync(join(root, folder.name), { recursive: true });
-    created.push(`${folder.name}/`);
+  const profile = loadProfile(root);
+  const names = [...new Set([...profile.requiredFolders, ...withFolders])];
+  for (const name of names) {
+    mkdirSync(join(root, name), { recursive: true });
+    created.push(`${name}/`);
   }
-  for (const page of [...requiredPages(), testingStrategyPage()]) {
+  for (const page of requiredPageTemplates(profile)) {
     writeText(join(root, page.path), page.text);
     created.push(page.path);
   }
-  created.push(...regenerateIndexes(root, loadProfile(root)));
+  created.push(...regenerateIndexes(root, profile));
   return created;
 }
 
@@ -82,10 +85,14 @@ export function init({ cwd, dir, withFolders = [], language = 'en', agents = DEF
   const wikiRel = toPosix(relative(cwd, root)) || '.';
 
   const created = existing ? [] : createWiki(root, withFolders, language);
+  const migrated = existing ? writeMissingRequired(root) : [];
   const agentFiles: AgentFileResult[] = agents.length ? writeAgentFiles({ projectRoot: cwd, wiki: wikiRel, profile: loadProfile(root), version, agents }) : [];
 
   const lines = [];
-  if (existing) lines.push(`A wiki already exists in ${wikiRel}; its pages were not touched.`);
+  if (existing) {
+    lines.push(`A wiki already exists in ${wikiRel}; its pages were not touched.`);
+    if (migrated.length) lines.push(`Wrote ${migrated.join(' and ')} to ${PROFILE_FILE}: edit them to choose what this wiki requires.`);
+  }
   else lines.push(`Wiki created in ${wikiRel}`, ...created.map((c) => `  ${c}`));
   if (agentFiles.length) lines.push('', 'Agent files:', ...agentFiles.map((f) => `  ${f.status.padEnd(9)} ${f.path}`));
   return { root, created, agent_files: agentFiles, text: lines.join('\n') };
